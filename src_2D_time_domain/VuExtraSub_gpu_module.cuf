@@ -123,17 +123,12 @@ module VuExtraGpu
 							   grado_q_d, l_m_tilde_d,l_m_d   
 	contains
 
-	attributes(host) subroutine setCommonData(wint, w, xint, x, delta_x, cp, cs, indice_i, indice_j, &
-        CA, CB, CC, CD, CE, CF, coeff_delta_kronecker, flag_extra, estremo_m, &
-        l_m_tilde,l_m,estremo_m_tilde,grado_q, CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, &
-        CACBCDCE, CBCDCECA)
-        integer :: istat, AllocateStatus
-   
-        integer, intent(in) :: indice_j, indice_i, flag_extra, grado_q, l_m_tilde, l_m
-        double precision, intent(in) :: CA, CB, CC, CE, CF, CD, &
-        coeff_delta_kronecker, delta_x, cs, cp, estremo_m, estremo_m_tilde, &
-        CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA		
-        double precision, dimension(Ngauss_d), intent(in) :: wint, w, xint, x
+	attributes(host) subroutine setCommonData(wint, w, xint, x, cp, cs, grado_q)
+
+        integer :: istat, AllocateStatus   
+        integer, intent(in) :: grado_q
+        double precision, intent(in) :: cs, cp	
+        double precision, dimension(:), intent(in) :: wint, w, xint, x
 
 
         ALLOCATE(x_d(Ngauss_d),STAT=AllocateStatus)
@@ -145,62 +140,72 @@ module VuExtraGpu
         ALLOCATE(wint_d(Ngauss_d),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
 		ALLOCATE(p2_d(Ngauss_d),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        !istat = cudaStreamCreate(stream1)
-        !istat = cudaStreamDestroy(stream1)
-        !istat=cudaMemcpy(wint_d, wint, Ngauss_d)!, stream1)
-        !istat=cudaMemcpy(w_d, w, Ngauss_d)!, stream1)
-        !istat=cudaMemcpy(xint_d, xint, Ngauss_d)!, stream1)
-        !istat=cudaMemcpy(x_d, x, Ngauss_d)!, stream1)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"        
 
+		!inizializzabili 1 sola volta
 		wint_d = wint
 		w_d = w
 		x_d = x
-		xint_d = xint		
-        delta_x_d = delta_x
-        cp_d = cp
-        cs_d = cs
-        indice_i_d = indice_i
-        indice_j_d = indice_j
-        CA_d = CA
-        CB_d = CB
-        CC_d = CC
-        CD_d = CD
-        CE_d = CE
-        CF_d = CF
-        coeff_delta_kronecker_d = coeff_delta_kronecker
-        delta_kronecker_d(1,1) = 1
+		xint_d = xint	
+		grado_q_d = grado_q_d
+		delta_kronecker_d(1,1) = 1
         delta_kronecker_d(1,2) = 0
         delta_kronecker_d(2,1) = 0
         delta_kronecker_d(2,2) = 1
-        flag_extra_d = flag_extra
-
-        l_m_tilde_d = l_m_tilde
-		l_m_d = l_m
-        estremo_m_d = estremo_m
-        estremo_m_tilde_d = estremo_m_tilde
-        grado_q_d = grado_q_d
-
-        CBCFCECC_d = CBCFCECC
-        CFCACCCD_d = CFCACCCD
-        CBCCCECF_d = CBCCCECF 
-        CACCCFCD_d = CACCCFCD
-        CACBCDCE_d = CACBCDCE
-        CBCDCECA_d = CBCDCECA
+		cp_d = cp
+        cs_d = cs		
 
 		!print *, "copia effettuata"
-	end subroutine setCommonData	
+	end subroutine setCommonData
+	
+	attributes(host) subroutine setInstanceCommonData(delta_x, indice_i, indice_j, &
+	CA, CB, CC, CD, CE, CF, coeff_delta_kronecker, flag_extra, estremo_m, &
+	l_m_tilde,l_m,estremo_m_tilde, CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, &
+	CACBCDCE, CBCDCECA)
 
-	attributes(global) subroutine startCalc(alfa_d, beta_d, iplog_d, iqlog_d,blockNumber)
-		double precision, intent(in) :: alfa_d, beta_d
+		double precision, intent(in) :: CA, CB, CC, CE, CF, CD, coeff_delta_kronecker, &
+									 delta_x, estremo_m, estremo_m_tilde, &
+									 CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA	
+		integer, intent(in) :: indice_j, indice_i, flag_extra, l_m_tilde, l_m
+
+		!cambiano ad ogni chiamata di vuextraSub
+		delta_x_d = delta_x
+			
+		indice_i_d = indice_i
+		indice_j_d = indice_j
+		CA_d = CA
+		CB_d = CB
+		CC_d = CC
+		CD_d = CD
+		CE_d = CE
+		CF_d = CF
+		coeff_delta_kronecker_d = coeff_delta_kronecker        
+		flag_extra_d = flag_extra
+		l_m_tilde_d = l_m_tilde
+		l_m_d = l_m
+		estremo_m_d = estremo_m
+		estremo_m_tilde_d = estremo_m_tilde
+		
+
+		CBCFCECC_d = CBCFCECC
+		CFCACCCD_d = CFCACCCD
+		CBCCCECF_d = CBCCCECF 
+		CACCCFCD_d = CACCCFCD
+		CACBCDCE_d = CACBCDCE
+		CBCDCECA_d = CBCDCECA
+
+	end subroutine setInstanceCommonData
+
+	!attributes(global) subroutine startCalc(alfa_d, beta_d, iplog_d, iqlog_d,blockNumber)
+	!	double precision, intent(in) :: alfa_d, beta_d
 		!double precision :: p2a(Ngauss_d)
-		integer, intent(in) :: iplog_d, iqlog_d, blockNumber
+	!	integer, intent(in) :: iplog_d, iqlog_d, blockNumber
 
 
-		call performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
-	end subroutine startCalc
+	!	call performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
+	!end subroutine startCalc
 
-	attributes(device) subroutine performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
+	attributes(global) subroutine performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
 
 		use Gauss_Gpu
 		

@@ -126,9 +126,10 @@ IF (delta_x.le.0.d0) RETURN
      flag_extra=3    !   non allineati non paralleli
   endif
 
+  !wint, w, xint, x, cp, cs,grado_q
   if(useGpu .eq. 1) then
-  call setCommonData(wint, w, xint, x, delta_x, cp, cs, indice_i, indice_j, CA, CB, CC, CD, CE, CF, &
-                     coeff_delta_kronecker, flag_extra, estremo_m, l_m_tilde,l_m, estremo_m_tilde, grado_q,&
+  call setInstanceCommonData(delta_x, indice_i, indice_j, CA, CB, CC, CD, CE, CF, &
+                     coeff_delta_kronecker, flag_extra, estremo_m, l_m_tilde,l_m, estremo_m_tilde, &
                      CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA)
   endif
   !*************************************
@@ -364,83 +365,75 @@ IF (delta_x.le.0.d0) RETURN
                  iplog=2
 			 endif
 
-             if(useGpu .eq. 1) then
-             alfa_d = alfa
-             beta_d = beta
-             iplog_d = iplog
-             iqlog_d = iqlog
+            if(useGpu .eq. 1) then
+                alfa_d = alfa
+                beta_d = beta
+                iplog_d = iplog
+                iqlog_d = iqlog
 
-             dimGrid = dim3(Ngauss,1,1)
-             dimBlock = dim3(1,Ngauss,1)             
-             sizeInBytes = sizeof(app)*Ngauss
+                dimGrid = dim3(Ngauss,1,1)
+                dimBlock = dim3(1,Ngauss,1)             
+                sizeInBytes = sizeof(app)*Ngauss
 
-             istat = cudaEventRecord(start,0)
-             call startCalc<<<dimGrid,dimBlock,sizeInBytes>>>(alfa_d, beta_d,iplog_d, iqlog_d, blockNumber)
-             
-             dimGrid = dim3(1,1,1)
-             dimBlock = dim3(Ngauss,1,1)
-             finalp2 = 0.d0
-             call finalSum<<<dimGrid,dimBlock>>>(finalp2)
-             istat = cudaEventRecord(stop,0)
-             istat = cudaDeviceSynchronize()
-             istat = cudaEventElapsedTime(time, start, stop)
-             p2 = finalp2
-             !print *, "gpu: p2-->", result, " exec time-->", time/(1.0e3), "seconds"
+                istat = cudaEventRecord(start,0)
+                call performCalc<<<dimGrid,dimBlock,sizeInBytes>>>(alfa_d, beta_d,iplog_d, iqlog_d)
+                
+                dimGrid = dim3(1,1,1)
+                dimBlock = dim3(Ngauss,1,1)
+                finalp2 = 0.d0
+                call finalSum<<<dimGrid,dimBlock>>>(finalp2)
+                istat = cudaEventRecord(stop,0)
+                istat = cudaDeviceSynchronize()
+                istat = cudaEventElapsedTime(time, start, stop)
+                p2 = finalp2
+                gputime = gputime + time/(1.0e3)
 
-		    ierrSync = cudaGetLastError()
-		    if (ierrSync /= cudaSuccess) then
-			    write(*,*) 'Sync kernel error:', cudaGetErrorString(ierrSync)
-		    endif
+                ierrSync = cudaGetLastError()
+                if (ierrSync /= cudaSuccess) then
+                    write(*,*) 'Sync kernel error:', cudaGetErrorString(ierrSync)
+                endif
 
             else
-            p2 = 0.d0
-			 !START1 = omp_get_wtime() 
-			 DO ki=1,Ngauss	
-                 xtrasl=alfa*x(ki)+beta
-			     A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cp))
-           	     B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cp))	             
-				 alfa_j1=(B1-A1)/2.d0
-	             beta_j1=(B1+A1)/2.d0
-				 p2a = 0.d0		
-                 		 
-	             !IF ((B1-A1).gt.10.d-15) THEN
-				 IF ((B1-A1).gt.10.d-14) THEN	
-                    DO kj=1,Ngauss
-                        value = 0.d0
-                        xinttrasl=(xint(kj)+1.d0)*0.5d0
-                        s=fi1(iplog,iqlog,xinttrasl)
-                        ds=dfi1(iplog,iqlog,xinttrasl)
-                        serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                        r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
-                        r(1)=CA+CB*xtrasl-CC*serv
-                        r(2)=CD+CE*xtrasl-CF*serv
-                        p2a = p2a+ wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
-                        !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
-                        IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN	                        
-                           p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
-                        ENDIF	
-                        !p2a = p2a + value
+                p2 = 0.d0
+                START1 = omp_get_wtime() 
+                DO ki=1,Ngauss	
+                    xtrasl=alfa*x(ki)+beta
+                    A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cp))
+                    B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cp))	             
+                    alfa_j1=(B1-A1)/2.d0
+                    beta_j1=(B1+A1)/2.d0
+                    p2a = 0.d0		
+                            
+                    !IF ((B1-A1).gt.10.d-15) THEN
+                    IF ((B1-A1).gt.10.d-14) THEN	
+                        DO kj=1,Ngauss
+                            value = 0.d0
+                            xinttrasl=(xint(kj)+1.d0)*0.5d0
+                            s=fi1(iplog,iqlog,xinttrasl)
+                            ds=dfi1(iplog,iqlog,xinttrasl)
+                            serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
+                            r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
+                            r(1)=CA+CB*xtrasl-CC*serv
+                            r(2)=CD+CE*xtrasl-CF*serv
+                            p2a = p2a+ wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
+                            !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
+                            IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN	                        
+                            p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
+                            ENDIF	
+                            !p2a = p2a + value
+                            !if(ki .eq. 16) then
+                            !    print *, kj, value
+                            !endif
+                        END DO
                         !if(ki .eq. 16) then
-                        !    print *, kj, value
+                        !    print *, ki, p2a
                         !endif
-                    END DO
-                    !if(ki .eq. 16) then
-                    !    print *, ki, p2a
-                    !endif
-                ENDIF
-                p2 = p2 + p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
-                !print *, "ki p2:",ki, value				 
-             END DO
-			 !END = omp_get_wtime() - START1
-             !if(END .le. time/(1.0e3)) then
-             !print *, "cpu: ",END , "seconds gpu: ", time/(1.0e3), "seconds"
-             !cpuwins = cpuwins + 1
-             !else
-             !gpuwins = gpuwins + 1
-             !endif
+                    ENDIF
+                    p2 = p2 + p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
+                    !print *, "ki p2:",ki, value				 
+                END DO
+                cputime =  cputime + omp_get_wtime() - START1
              
-             !print *, "---------------------------------"
-			 !pause
             endif
              Vuextra_sub_P=Vuextra_sub_P+p2*alfa		 
 		 else

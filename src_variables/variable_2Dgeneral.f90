@@ -2,7 +2,7 @@ MODULE variable_2Dgeneral
     
     
     !-- gpu --
-    integer :: useGpu = 1
+    integer :: useGpu = 0
 
     !!! FILE !!!
     CHARACTER(len=200)::  dir, ext
@@ -86,7 +86,7 @@ MODULE variable_2Dgeneral
   TYPE(gauss_type),POINTER:: gauss(:) => null()
   INTEGER(kind=4):: number_gauss
 
-  integer(kind=8) :: cpuwins
-  integer(kind=8) :: gpuwins
+  integer(kind=8) :: cpuwins=0, gpuwins=0
+  double precision :: cputime=0, gputime=0
 
 END MODULE variable_2Dgeneral
