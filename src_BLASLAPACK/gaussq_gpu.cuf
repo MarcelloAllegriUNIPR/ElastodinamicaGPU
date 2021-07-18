@@ -1,0 +1,251 @@
+module Gauss_Gpu
+
+	use cudafor
+	
+	contains
+
+	attributes(device) double precision function fi1_d(ip,iq,t)
+
+		implicit double precision (a-h,o-z)
+		parameter (m=64)
+
+		dimension bser(m),endpts(2),fn(m),fw(m)
+
+		Ngauss=(ip+iq)/2
+
+		call GAUSSQ_d(1,Ngauss,0.d0,0.d0,0,endpts,bser,fn,fw)
+
+
+
+		do 10 i=1,Ngauss
+		fn(i)=0.5d0*t*(fn(i)+1.d0)
+		fw(i)=0.5d0*t*fw(i)
+		10      continue
+
+
+		cn=ip
+		cd=1.d0
+		do 15 i=1,iq-1
+		cd=cd*i
+		cn=cn*(ip+i)
+		15      continue
+		coef=cn/cd
+
+		fi1_d=0.d0
+		do 25i=1,Ngauss
+		fi1_d=fi1_d+fw(i)*fn(i)**(ip-1)*(1.d0-fn(i))**(iq-1)
+		25      continue
+		fi1_d=fi1_d*coef
+
+		return
+	end function fi1_d
+
+	attributes(device) SUBROUTINE GAUSSQ_d(KIND,N,ALPHA,BETA,KPTS,ENDPTS,B,T,W)
+		DOUBLE PRECISION B,T,W,ENDPTS,MUZERO,T1,GAM,SOLVE_d,DSQRT,ALPHA,BETA
+		DIMENSION B(N),T(N),W(N),ENDPTS(2)
+		CALL CLASS_d(KIND,N,ALPHA,BETA,B,T,MUZERO)
+		IF(KPTS.EQ.0) GOTO 100
+		IF(KPTS.EQ.2) GOTO 50
+		T(N)=SOLVE_d(ENDPTS(1),N,T,B)*B(N-1)**2+ENDPTS(1)
+		GOTO 100
+		50      GAM=SOLVE_d(ENDPTS(1),N,T,B)
+		T1=((ENDPTS(1)-ENDPTS(2))/(SOLVE_d(ENDPTS(2),N,T,B)-GAM))
+		B(N-1)=DSQRT(T1)
+		T(N)=ENDPTS(1)+GAM*T1
+		100     W(1)=1.D0
+		DO 105 I=2,N
+		105     W(I)=0.D0
+		CALL IMTQL2_d(N,T,B,W,IERR)
+		DO 110 I=1,N
+		110     W(I)=MUZERO*W(I)*W(I)
+		RETURN
+	END
+
+	attributes(device) DOUBLE PRECISION FUNCTION SOLVE_d(SHIFT,N,A,B)
+		REAL*8 SHIFT,A,B,ALPHA
+		DIMENSION A(N),B(N)
+		ALPHA=A(1)-SHIFT
+		NM1=N-1
+		DO 10 I=2,NM1
+		10      ALPHA=A(I)-SHIFT-B(I-1)**2/ALPHA
+		SOLVE_d=1.D0/ALPHA
+		RETURN
+	END
+
+	attributes(device) SUBROUTINE CLASS_d(KIND,N,ALPHA,BETA,B,A,MUZERO)
+
+		DOUBLE PRECISION A,B,MUZERO,ALPHA,BETA,ABI,A2B2,PI,GAMMA_d,DSQRT,AB
+		DIMENSION A(N),B(N)
+		DATA PI/3.141592653589793D0/
+		NM1=N-1
+		GO TO(10,20,30,40,50,60),KIND
+		10      MUZERO=2.D0
+		DO 11 I=1,NM1
+		A(I)=0.D0
+		ABI=I
+		11      B(I)=ABI/DSQRT(4.D0*ABI*ABI-1.D0)
+		A(N)=0.D0
+		GO TO 70
+		20      MUZERO=PI
+		DO 21 I=1,NM1
+		A(I)=0.D0
+		21      B(I)=.5D0
+		B(1)=DSQRT(0.5D0)
+		A(N)=0.D0
+		GOTO 70
+		30      MUZERO=PI/2.D0
+		DO 31 I=1,NM1
+		A(I)=0.D0
+		31      B(I)=0.5D0
+		A(N)=0.D0
+		GOTO 70
+		40      MUZERO=DSQRT(PI)
+		DO 41 I=1,NM1
+		A(I)=0.D0
+		41      B(I)=DSQRT(DBLE(FLOAT(I))/2.D0)
+		A(N)=0.D0
+		GOTO 70
+		50      AB=ALPHA+BETA
+		ABI=2.D0+AB
+		MUZERO=2.D0**(AB+1.D0)*GAMMA_d(ALPHA+1.D0)*GAMMA_d(BETA+1.D0)/GAMMA_d(ABI)
+		A(1)=(BETA-ALPHA)/ABI
+		B(1)=DSQRT(4.D0*(1.D0+ALPHA)*(1.D0+BETA)/((ABI+1.D0)*ABI*ABI))
+		A2B2=BETA*BETA-ALPHA*ALPHA
+		DO 51 I=2,NM1
+		ABI=2.D0*DBLE(FLOAT(I))+AB
+		A(I)=A2B2/((ABI-2.D0)*ABI)
+		51      B(I)=DSQRT(4.D0*DBLE(FLOAT(I))*(DBLE(FLOAT(I))+ALPHA)*(DBLE(FLOAT(I))+BETA)*(DBLE(FLOAT(I))+AB)/((ABI*ABI-1.D0)*ABI*ABI))
+		ABI=2.D0*DBLE(FLOAT(N))+AB
+		A(N)=A2B2/((ABI-2.D0)*ABI)
+		GOTO 70
+		60      MUZERO=GAMMA_d(ALPHA+1.D0)
+		DO 61 I=1,NM1
+		A(I)=2.D0*DBLE(FLOAT(I))-1.D0+ALPHA
+		61      B(I)=DSQRT(DBLE(FLOAT(I))*(DBLE(FLOAT(I))+ALPHA))
+		A(N)=2.D0*DBLE(FLOAT(N))-1.D0+ALPHA
+		70      RETURN
+	END
+
+	attributes(device) SUBROUTINE IMTQL2_d(N,D,E,Z,IERR)
+
+		DOUBLE PRECISION D,E,Z,B,C,F,G,P,R,S,MACHEP,DSQRT,DABS,DSIGN
+		DIMENSION D(N),E(N),Z(N)
+
+		DATA MACHEP/1.D-16/
+		IERR=0
+		IF(N.EQ.1)GO TO 1001
+		E(N)=0.D0
+		DO 240 L=1,N
+		J=0
+		105     DO 110 M=L,N
+		IF(M.EQ.N)GOTO 120
+		IF(DABS(E(M)).LE.MACHEP*(DABS(D(M))+DABS(D(M+1))))GOTO 120
+		110     CONTINUE
+		120     P=D(L)
+		IF(M.EQ.L)GOTO 240
+		IF(J.EQ.30)GOTO 1000
+		J=J+1
+		G=(D(L+1)-P)/(2.D0*E(L))
+		R=DSQRT(G*G+1.D0)
+		G=D(M)-P+E(L)/(G+DSIGN(R,G))
+		S=1.D0
+		C=1.D0
+		P=0.D0
+		MML=M-L
+		DO 200 II=1,MML
+		I=M-II
+		F=S*E(I)
+		B=C*E(I)
+		IF(DABS(F).LT.DABS(G))GOTO 150
+		C=G/F
+		R=DSQRT(C*C+1.D0)
+		E(I+1)=F*R
+		S=1.D0/R
+		C=C*S
+		GOTO 160
+		150     S=F/G
+		R=DSQRT(S*S+1.D0)
+		E(I+1)=G*R
+		C=1.D0/R
+		S=S*C
+		160     G=D(I+1)-P
+		R=(D(I)-G)*S+2.D0*C*B
+		P=S*R
+		D(I+1)=G+P
+		G=C*R-B
+		F=Z(I+1)
+		Z(I+1)=S*Z(I)+C*F
+		200     Z(I)=C*Z(I)-S*F
+		D(L)=D(L)-P
+		E(L)=G
+		E(M)=0.D0
+		GOTO 105
+		240     CONTINUE
+		DO 300 II=2,N
+		I=II-1
+		K=I
+		P=D(I)
+		DO 260 J=II,N
+		IF(D(J).GE.P)GOTO 260
+		K=J
+		P=D(J)
+		260     CONTINUE
+		IF(K.EQ.I)GOTO 300
+		D(K)=D(I)
+		D(I)=P
+		P=Z(I)
+		Z(I)=Z(K)
+		Z(K)=P
+		300     CONTINUE
+		GOTO 1001
+		1000    IERR=L
+		1001    RETURN
+	END
+
+	attributes(device) DOUBLE PRECISION FUNCTION GAMMA_d(X)
+
+		DOUBLE PRECISION X,ALGA_d,DEXP
+		IF(X.LT..5D0)GOTO 10
+		GAMMA_d=DEXP(ALGA_d(X))
+		RETURN
+		10      GAMMA_d=DEXP(ALGA_d(X+1.D0))/X
+		RETURN
+	END
+
+	attributes(device) DOUBLE PRECISION FUNCTION ALGA_d(X)
+		DOUBLE PRECISION CNUM,CDEN,XI,DINT,X,XE,SNUM,SDEN,DLOG,P,DBLE
+		DIMENSION CNUM(8),CDEN(8)
+		CNUM = (/4.12084318584777D0,85.68982062831317D0, 243.175243524421D0,-261.7218583856145D0,-922.2613728801522D0,-517.6383498023218D0, -77.41064071332953D0,-2.208843997216182D0/)
+		CDEN = (/1.D0,45.64677187585908D0,377.8372484823942D0, 951.323597679706D0,846.0755362020782D0,262.3083470269460D0,24.43519662506312D0, 0.4097792921092615D0/)
+		XI=DINT(X)
+		IF(X-XI.GT..5D0) XI=XI+1.D0
+		M=IFIX(SNGL(XI))-1.D0
+		XE=X
+		IF(M.EQ.-1) XE=X+1.D0
+		IF(M.GT.0) XE=X-DBLE(FLOAT(M))
+		SNUM=CNUM(1)
+		SDEN=CDEN(1)
+		DO 10 K=2,8
+		SNUM=XE*SNUM+CNUM(K)
+		10      SDEN=XE*SDEN+CDEN(K)
+		ALGA_d=(XE-1.D0)*SNUM/SDEN
+		IF(M.GT.-1) GOTO 20
+		ALGA_d=ALGA_d-DLOG(X)
+		RETURN
+		20      IF(M.EQ.0) RETURN
+		P=XE
+		IF(M.EQ.1) GOTO 40
+		MM1=M-1
+
+		IF(M.GT.33) GOTO 50
+		DO 30 K=1,MM1
+		30      P=(XE+DBLE(FLOAT(K)))*P
+		40      ALGA_d=ALGA_d+DLOG(P)
+		RETURN
+		50      ALGA_d=ALGA_d+DLOG(XE)
+		DO 60 K=1,MM1
+		60      ALGA_d=ALGA_d+DLOG(XE+DBLE(FLOAT(K)))
+		RETURN
+	END
+
+end module Gauss_Gpu
