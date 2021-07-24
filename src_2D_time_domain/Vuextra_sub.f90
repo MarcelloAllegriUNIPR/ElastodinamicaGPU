@@ -393,6 +393,10 @@ IF (delta_x.le.0.d0) RETURN
                     write(*,*) 'Sync kernel error:', cudaGetErrorString(ierrSync)
                 endif
 
+                !iterationCounter = iterationCounter + 1
+                !print *, "iterationCounter", iterationCounter
+                !print *, p2
+                !pause
             else
                 p2 = 0.d0
                 START1 = omp_get_wtime() 
@@ -402,12 +406,11 @@ IF (delta_x.le.0.d0) RETURN
                     B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cp))	             
                     alfa_j1=(B1-A1)/2.d0
                     beta_j1=(B1+A1)/2.d0
-                    p2a = 0.d0		
-                            
+                    p2a = 0.d0		                    
                     !IF ((B1-A1).gt.10.d-15) THEN
                     IF ((B1-A1).gt.10.d-14) THEN	
                         DO kj=1,Ngauss
-                            value = 0.d0
+                            !value = 0.d0
                             xinttrasl=(xint(kj)+1.d0)*0.5d0
                             s=fi1(iplog,iqlog,xinttrasl)
                             ds=dfi1(iplog,iqlog,xinttrasl)
@@ -415,26 +418,39 @@ IF (delta_x.le.0.d0) RETURN
                             r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
                             r(1)=CA+CB*xtrasl-CC*serv
                             r(2)=CD+CE*xtrasl-CF*serv
-                            p2a = p2a+ wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
-                            !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
-                            IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN	                        
-                            p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
+                            p2a = p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
+	                        !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
+	                        
+                            !if(ki .eq. 16) then
+                            !    print *, kj, wint(kj)
+                            !endif
+
+                            IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
+                                p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt(dabs((cp*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
+                                !p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt((cp*delta_x)**2-r2_1))-dlog(sqrt(r2_1)))
                             ENDIF	
                             !p2a = p2a + value
                             !if(ki .eq. 16) then
                             !    print *, kj, value
-                            !endif
+                            !endif                            
                         END DO
                         !if(ki .eq. 16) then
                         !    print *, ki, p2a
                         !endif
                     ENDIF
-                    p2 = p2 + p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
-                    !print *, "ki p2:",ki, value				 
+                    p2=p2+p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
+                    !value = p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
+                    !p2 = p2 + value                    
+                    !print *, "cpu p2:",ki, value
+                    !print *,"cpu", ki, p2a                    				 
                 END DO
                 cputime =  cputime + omp_get_wtime() - START1
-             
-            endif
+                
+                !iterationCounter = iterationCounter + 1
+                !print *, "iterationCounter", iterationCounter
+                !print *,p2
+                !pause                
+            endif            
              Vuextra_sub_P=Vuextra_sub_P+p2*alfa		 
 		 else
 		     Vuextra_sub_P=Vuextra_sub_P+0.d0

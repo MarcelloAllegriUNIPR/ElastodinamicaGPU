@@ -32,7 +32,7 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   dir='./../tests/output/cpu'
   else
     dir='./../tests/output/gpu'
-    call setCommonData(gauss(ind_gauss)%nodiquad, gauss(ind_gauss)%nodiquad, &
+    call setCommonData(gauss(ind_gauss)%pesiquad, gauss(ind_gauss)%pesiquad, &
                        gauss(ind_gauss)%nodiquad, gauss(ind_gauss)%nodiquad, &
                        velC_P, velC_S, grado_q)
   endif

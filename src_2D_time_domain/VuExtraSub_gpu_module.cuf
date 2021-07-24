@@ -196,15 +196,6 @@ module VuExtraGpu
 
 	end subroutine setInstanceCommonData
 
-	!attributes(global) subroutine startCalc(alfa_d, beta_d, iplog_d, iqlog_d,blockNumber)
-	!	double precision, intent(in) :: alfa_d, beta_d
-		!double precision :: p2a(Ngauss_d)
-	!	integer, intent(in) :: iplog_d, iqlog_d, blockNumber
-
-
-	!	call performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
-	!end subroutine startCalc
-
 	attributes(global) subroutine performCalc(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
 
 		use Gauss_Gpu
@@ -234,14 +225,19 @@ module VuExtraGpu
 				r(1)=CA_d+CB_d*xtrasl-CC_d*serv
 				r(2)=CD_d+CE_d*xtrasl-CF_d*serv
 				p2a(kj) = +wint_d(kj)*ds*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*(r(indice_i_d)*r(indice_j_d)/(r2_1**2)-coeff_delta_kronecker_d/r2_1)*(delta_x_d/cp_d)*sqrt(dabs((cp_d*delta_x_d)**2-r2_1))
+				
+				!if(ki .eq. 16) then
+				!	print *,"gpu",kj, wint_d(kj)
+				!endif
+				
 				!!p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
 				IF (delta_kronecker_d(indice_i_d,indice_j_d).eq.1.d0) THEN	                        
-				   p2a(kj)= p2a(kj)+wint_d(kj)*ds*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cs_d**2)*(dlog(cs_d*delta_x_d+sqrt(dabs((cs_d*delta_x_d)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
+				   p2a(kj)= p2a(kj)+wint_d(kj)*ds*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cp_d**2)*(dlog(cp_d*delta_x_d+sqrt(dabs((cp_d*delta_x_d)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
 				ENDIF	
 				
 				
 				!if(ki .eq. 16) then
-				!	print *, kj, p2a(kj)
+				!	print *,"p2a value gpu",kj, p2a(kj)
 				!endif
 
 				call syncthreads()
@@ -249,8 +245,7 @@ module VuExtraGpu
 				!if(kj .eq. 1 .and. blockNumber .eq.1) then 
 				!	print *, "prima somma"
 				!endif				
-				if(kj.le.16) then
-					
+				if(kj.le.16) then					
 					!if(ki .eq. 16) then 
 					!	print *,kj, p2a(kj),p2a(kj+16), p2a(kj)+p2a(kj+16)
 					!endif
@@ -285,6 +280,7 @@ module VuExtraGpu
 					!endif
 					!print *, blockNumber, p2a(1)
 					p2_d(ki) = p2a(1)*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl,estremo_m_tilde_d,grado_q_d)					
+					!print *,"sum gpu: ", ki, p2a(1)
 				endif
 		ENDIF		
 		
@@ -303,24 +299,35 @@ module VuExtraGpu
 		double precision,device, intent(inout) :: finalp2
 		integer :: app,k,i
 
-		!print *, "ki p2:",threadIdx%x, p2_d(threadIdx%x)
+		!if(threadIdx%x .eq. 1) then 
+		!	print *, "- - - - - - - - - - - - - - - - - - -"
+		!endif
+		!print *, "gpu p2:",threadIdx%x, p2_d(threadIdx%x)
 
 		if(threadIdx%x .le. 16) then
-			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+16)
-			call syncthreads()
+			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+16)			
 		endif
+
+		call syncthreads()
+
 		if(threadIdx%x .le. 8) then
-			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+8)
-			call syncthreads()
+			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+8)			
 		endif
+
+		call syncthreads()
+
 		if(threadIdx%x .le. 4) then
-			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+4)
-			call syncthreads()
+			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+4)			
 		endif
+
+		call syncthreads()
+
 		if(threadIdx%x .le. 2) then
-			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+2)
-			call syncthreads()
+			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+2)			
 		endif
+
+		call syncthreads()
+
 		if(threadIdx%x .eq. 1) then 
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+1)			
 			finalp2 = p2_d(1)
