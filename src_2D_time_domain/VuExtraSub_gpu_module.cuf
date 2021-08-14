@@ -196,6 +196,13 @@ module VuExtraGpu
 
 	end subroutine setInstanceCommonData
 
+	attributes(host) subroutine garbageCollector
+		deallocate(x_d)
+		deallocate(xint_d)
+		deallocate(w_d)
+		deallocate(p2_d)        
+	end subroutine
+
 	attributes(global) subroutine performCalcEP(alfa_d, beta_d, iplog_d, iqlog_d) !,p2a)
 
 		use Gauss_Gpu
@@ -330,31 +337,31 @@ module VuExtraGpu
 				   p2a(kj)= p2a(kj)+wint_d(kj)*ds*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cs_d**2)*(dlog(cs_d*delta_x_d+sqrt(dabs((cs_d*delta_x_d)**2-r2_1)))-dlog(sqrt(r2_1)))	                         
 				ENDIF	
 				
-				call syncthreads()
+				call syncwarp(ki)
 				
 				if(kj.le.16) then
 					p2a(kj) = p2a(kj)+p2a(kj+16)
 				endif
 				
-				call syncthreads()
+				call syncwarp(ki)
 
 				if(kj .le. 8) then
 					p2a(kj) = p2a(kj)+p2a(kj+8)					
 				endif
 
-				call syncthreads()
+				call syncwarp(ki)
 
 				if(kj .le. 4) then
 					p2a(kj) = p2a(kj)+p2a(kj+4)					
 				endif
 
-				call syncthreads()
+				call syncwarp(ki)
 
 				if(kj .le. 2) then
 					p2a(kj) = p2a(kj)+p2a(kj+2)
 				endif
 
-				call syncthreads()
+				call syncwarp(ki)
 
 				if(kj .eq. 1) then 
 					p2a(kj) = p2a(kj)+p2a(kj+1)					
@@ -373,30 +380,31 @@ module VuExtraGpu
 		!	print *, "- - - - - - - - - - - - - - - - - - -"
 		!endif
 		!print *, "gpu p2:",threadIdx%x, p2_d(threadIdx%x)
+		call syncthreads()
 
 		if(threadIdx%x .le. 16) then
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+16)			
 		endif
 
-		call syncthreads()
+		call syncwarp(blockidx%x)
 
 		if(threadIdx%x .le. 8) then
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+8)			
 		endif
 
-		call syncthreads()
+		call syncwarp(blockidx%x)
 
 		if(threadIdx%x .le. 4) then
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+4)			
 		endif
 
-		call syncthreads()
+		call syncwarp(blockidx%x)
 
 		if(threadIdx%x .le. 2) then
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+2)			
 		endif
 
-		call syncthreads()
+		call syncwarp(blockidx%x)
 
 		if(threadIdx%x .eq. 1) then 
 			p2_d(threadIdx%x) = p2_d(threadIdx%x)+p2_d(threadIdx%x+1)			
