@@ -1,8 +1,8 @@
 MODULE variable_2Dgeneral
     
-    
+    use cudafor
     !-- gpu --
-    integer :: useGpu = 0
+    integer :: useGpu = 1
 
     !!! FILE !!!
     CHARACTER(len=200)::  dir, ext
@@ -88,5 +88,7 @@ MODULE variable_2Dgeneral
 
   integer(kind=8) :: cpuwins=0, gpuwins=0, iterationCounter = 0
   double precision :: cputime=0, gputime=0
+  type(dim3) :: dimGrid, dimBlockCalculation, dimBlockPreCalculation
+	integer :: sizeInBytes, NGaussDimension
 
 END MODULE variable_2Dgeneral

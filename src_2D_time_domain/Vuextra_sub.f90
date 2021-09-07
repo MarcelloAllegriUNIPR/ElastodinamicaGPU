@@ -33,14 +33,13 @@
   REAL(kind=8), DIMENSION(6) :: xx
   REAL(kind=8), DIMENSION(2) :: r, punto_m_1, punto_m_2, punto_m_tilde_1, punto_m_tilde_2
 
-  DOUBLE PRECISION START1, END, value,  result
+  DOUBLE PRECISION START1, END, value
 
-  type(dim3) :: dimGrid, dimBlock
-  integer :: sizeInBytes, istat
-  double precision, device :: alfa_d, beta_d, finalp2
-  integer, device :: iplog_d, iqlog_d, blockNumber
-  type(cudaEvent) :: start, stop
+  integer :: istat
+  type(cudaEvent) :: start, stop  
   real :: time
+  double precision, device :: alfa_d, beta_d,CalculationResults(10),result
+  integer, device :: iplog_d, iqlog_d
   !!!!!!!!!!!!!!!!!!!!!!!!!! CORPO della SUBROUTINE !!!!!!!!!!!!!!!!!!
   istat = cudaEventCreate(start)
   istat = cudaEventCreate(stop)
@@ -128,9 +127,10 @@ IF (delta_x.le.0.d0) RETURN
 
   !wint, w, xint, x, cp, cs,grado_q
   if(useGpu .eq. 1) then
-  call setInstanceCommonData(delta_x, indice_i, indice_j, CA, CB, CC, CD, CE, CF, &
+    call setInstanceCommonData(delta_x, indice_i, indice_j, CA, CB, CC, CD, CE, CF, &
                      coeff_delta_kronecker, flag_extra, estremo_m, l_m_tilde,l_m, estremo_m_tilde, &
                      CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA)
+    CalculationResults = 0.d0
   endif
   !*************************************
   !             INTEGRAZIONE SU ES
@@ -210,104 +210,106 @@ IF (delta_x.le.0.d0) RETURN
 		     xx(ii)=estremo_m_tilde
 		 endif
 	 enddo
-	 DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su ES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	     !if(xx(ii+1)-xx(ii).gt.1.d-15)then
-         if(xx(ii+1)-xx(ii).gt.1.d-14)then		 
-			 alfa=(xx(ii+1)-xx(ii))/2.d0
-	         beta=(xx(ii+1)+xx(ii))/2.d0
-	
-             p2 = 0.d0
-	 
-	         iplog=1
-			 iqlog=1
-             if(curva_piu_meno(beta,flag_extra,1,cs).le.estremo_m)then
-			     iqlog=2
-             elseif((curva_piu_meno(x(ii),flag_extra,1,cs).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cs).eq.estremo_m))then
-                 iqlog=2         
-			 endif			
+     if(useGpu .eq. 0) then
+        DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su ES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !if(xx(ii+1)-xx(ii).gt.1.d-15)then
+            if(xx(ii+1)-xx(ii).gt.1.d-14)then		 
+                alfa=(xx(ii+1)-xx(ii))/2.d0
+                beta=(xx(ii+1)+xx(ii))/2.d0
+        
+                p2 = 0.d0
+        
+                iplog=1
+                iqlog=1
+                if(curva_piu_meno(beta,flag_extra,1,cs).le.estremo_m)then
+                    iqlog=2
+                elseif((curva_piu_meno(x(ii),flag_extra,1,cs).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cs).eq.estremo_m))then
+                    iqlog=2         
+                endif			
 
-             if(curva_piu_meno(beta,flag_extra,-1,cs).ge.0.d0)then
-			     iplog=2
-             elseif((curva_piu_meno(x(ii),flag_extra,-1,cs).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cs).eq.0.d0))then
-                 iplog=2
-			 endif
-
-            if(useGpu .eq. 1) then
-                alfa_d = alfa
-                beta_d = beta
-                iplog_d = iplog
-                iqlog_d = iqlog
-
-                dimGrid = dim3(Ngauss,1,1)
-                dimBlock = dim3(1,Ngauss,1)             
-                sizeInBytes = sizeof(app)*Ngauss
-
-                istat = cudaEventRecord(start,0)
-                call performCalcES<<<dimGrid,dimBlock,sizeInBytes>>>(alfa_d, beta_d,iplog_d, iqlog_d)
+                if(curva_piu_meno(beta,flag_extra,-1,cs).ge.0.d0)then
+                    iplog=2
+                elseif((curva_piu_meno(x(ii),flag_extra,-1,cs).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cs).eq.0.d0))then
+                    iplog=2
+                endif
                 
-                dimGrid = dim3(1,1,1)
-                dimBlock = dim3(Ngauss,1,1)
-                finalp2 = 0.d0
-                call finalSum<<<dimGrid,dimBlock>>>(finalp2)
+                p2 = 0.d0
+                START1 = omp_get_wtime()
+                DO ki=1,Ngauss	
+                    xtrasl=alfa*x(ki)+beta
+                    A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cs))
+                    B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cs))
+                    alfa_j1=(B1-A1)/2.d0
+                    beta_j1=(B1+A1)/2.d0
+                    p2a = 0.d0                    
+                    IF ((B1-A1).gt.10.d-14) THEN	                 
+                        DO kj=1,Ngauss     
+                            value = 0.d0                       
+                            xinttrasl=(xint(kj)+1.d0)*0.5d0
+                            s=fi1(iplog,iqlog,xinttrasl)
+                            ds=dfi1(iplog,iqlog,xinttrasl)
+                            serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
+                            r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
+                            r(1)=CA+CB*xtrasl-CC*serv
+                            r(2)=CD+CE*xtrasl-CF*serv
+                            p2a = p2a - wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))							                            
+                            IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
+                                p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))                                
+                            ENDIF                            					
+                        END DO
+                    ENDIF
+                    !print *,p2a
+                    p2 = p2 +p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)                                    
+                END DO
+                cputime =  cputime + omp_get_wtime() - START1               
+                !pause
+                !print *,p2*alfa
+                Vuextra_sub_S=Vuextra_sub_S+p2*alfa             
+            else
+                Vuextra_sub_S=Vuextra_sub_S+0.d0
+            endif		 
+        enddo     
+    else
+        DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su ES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !if(xx(ii+1)-xx(ii).gt.1.d-15)then
+            if(xx(ii+1)-xx(ii).gt.1.d-14)then		 
+                alfa_d=(xx(ii+1)-xx(ii))/2.d0
+                beta_d=(xx(ii+1)+xx(ii))/2.d0
+
+                iplog_d=1
+                iqlog_d=1
+                if(curva_piu_meno(beta,flag_extra,1,cs).le.estremo_m)then
+                    iqlog_d=2
+                elseif((curva_piu_meno(x(ii),flag_extra,1,cs).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cs).eq.estremo_m))then
+                    iqlog_d=2         
+                endif			
+
+                if(curva_piu_meno(beta,flag_extra,-1,cs).ge.0.d0)then
+                    iplog_d=2
+                elseif((curva_piu_meno(x(ii),flag_extra,-1,cs).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cs).eq.0.d0))then
+                    iplog_d=2
+                endif
+                
+                istat = cudaEventRecord(start,0)
+                
+                !print *,"call preCalculationES<<<dimGrid,dimBlockPreCalculation>>>(alfa_d,beta_d,iplog_d, iqlog_d)"
+                call preCalculationES<<<dimGrid,dimBlockPreCalculation>>>(alfa_d,beta_d,iplog_d, iqlog_d)
+                !print *,"call performCalcES<<<dimGrid,dimBlockCalculation>>>(alfa_d,result)"
+                call performCalcES<<<dimGrid,dimBlockCalculation,sizeof(app)*NGaussDimension*NGaussDimension>>>(alfa_d,CalculationResults(ii))                
+                !pause
+
                 istat = cudaEventRecord(stop,0)
                 istat = cudaDeviceSynchronize()
-                istat = cudaEventElapsedTime(time, start, stop)
-                p2 = finalp2
+                istat = cudaEventElapsedTime(time, start, stop)                
                 gputime = gputime + time/(1.0e3)
 
                 ierrSync = cudaGetLastError()
                 if (ierrSync /= cudaSuccess) then
                     write(*,*) 'Sync kernel error:', cudaGetErrorString(ierrSync)
                 endif
-
-                !iterationCounter = iterationCounter + 1
-                !print *, "iterationCounter", iterationCounter
-                !print *, p2
-                !pause
-            else
-                p2 = 0.d0
-                START1 = omp_get_wtime() 
-    	     	DO ki=1,Ngauss	
-                 	xtrasl=alfa*x(ki)+beta
-				    A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cs))
-           	    	B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cs))
-				 	alfa_j1=(B1-A1)/2.d0
-	             	beta_j1=(B1+A1)/2.d0
-				 	p2a = 0.d0
-				 	IF ((B1-A1).gt.10.d-14) THEN	                 
-                    	DO kj=1,Ngauss
-	                     	xinttrasl=(xint(kj)+1.d0)*0.5d0
-	                     	s=fi1(iplog,iqlog,xinttrasl)
-	                     	ds=dfi1(iplog,iqlog,xinttrasl)
-	                     	serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                         	r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
-						 	r(1)=CA+CB*xtrasl-CC*serv
-						 	r(2)=CD+CE*xtrasl-CF*serv
-	                     	p2a = p2a - wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))							
-	                     	IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
-	                         	p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
-							ENDIF							
-                    	END DO
-        	     	ENDIF
-	             	p2 = p2 +p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)                    
-                    
-                    !value = p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
-                    !p2 = p2+value
-                    !print *,"cpu", ki, value
-                END DO
-                cputime =  cputime + omp_get_wtime() - START1
-                !print *,"cpu",p2
-                !if(abs(value-p2) .gt. 1.d-10) then
-                !    print *, "ES cpu", p2, "gpu", value
-                !    pause
-                !endif
-            endif            
-            !pause
-            Vuextra_sub_S=Vuextra_sub_S+p2*alfa             
-		else
-		    Vuextra_sub_S=Vuextra_sub_S+0.d0
-        endif		 
-	 enddo	 
+            endif
+        enddo  
+    endif
   endif
   
   ! write(*,*) 'integrale cs', Vuextra_sub_S!!!!!!!!!!!!!!!!!
@@ -391,125 +393,146 @@ IF (delta_x.le.0.d0) RETURN
 		     xx(ii)=estremo_m_tilde
 		 endif
 	 enddo
-	 DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su EP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	     !if(xx(ii+1)-xx(ii).gt.1.d-15)then
-		 if(xx(ii+1)-xx(ii).gt.1.d-14)then
-			 alfa=(xx(ii+1)-xx(ii))/2.d0
-	         beta=(xx(ii+1)+xx(ii))/2.d0
-	
-             p2 = 0.d0
+    if(useGpu .eq. 0) then
+        DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su EP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            !if(xx(ii+1)-xx(ii).gt.1.d-15)then
+            if(xx(ii+1)-xx(ii).gt.1.d-14)then
+                alfa=(xx(ii+1)-xx(ii))/2.d0
+                beta=(xx(ii+1)+xx(ii))/2.d0
+        
+                p2 = 0.d0
 
-	         iplog=1
-			 iqlog=1
-             if(curva_piu_meno(beta,flag_extra,1,cp).le.estremo_m)then
-			     iqlog=2
-             elseif((curva_piu_meno(x(ii),flag_extra,1,cp).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cp).eq.estremo_m))then
-                 iqlog=2         
-			 endif			
+                iplog=1
+                iqlog=1
+                if(curva_piu_meno(beta,flag_extra,1,cp).le.estremo_m)then
+                    iqlog=2
+                elseif((curva_piu_meno(x(ii),flag_extra,1,cp).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cp).eq.estremo_m))then
+                    iqlog=2         
+                endif			
 
-             if(curva_piu_meno(beta,flag_extra,-1,cp).ge.0.d0)then
-			     iplog=2
-             elseif((curva_piu_meno(x(ii),flag_extra,-1,cp).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cp).eq.0.d0))then
-                 iplog=2
-			 endif
+                if(curva_piu_meno(beta,flag_extra,-1,cp).ge.0.d0)then
+                    iplog=2
+                elseif((curva_piu_meno(x(ii),flag_extra,-1,cp).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cp).eq.0.d0))then
+                    iplog=2
+                endif
 
-            if(useGpu .eq. 1) then
-                alfa_d = alfa
-                beta_d = beta
-                iplog_d = iplog
-                iqlog_d = iqlog
-
-                dimGrid = dim3(Ngauss,1,1)
-                dimBlock = dim3(1,Ngauss,1)             
-                sizeInBytes = sizeof(app)*Ngauss
-
-                istat = cudaEventRecord(start,0)
-                call performCalcEP<<<dimGrid,dimBlock,sizeInBytes>>>(alfa_d, beta_d,iplog_d, iqlog_d)
                 
-                dimGrid = dim3(1,1,1)
-                dimBlock = dim3(Ngauss,1,1)
-                finalp2 = 0.d0
-                call finalSum<<<dimGrid,dimBlock>>>(finalp2)
+                
+                    p2 = 0.d0
+                    START1 = omp_get_wtime() 
+                    DO ki=1,Ngauss	
+                        xtrasl=alfa*x(ki)+beta
+                        A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cp))
+                        B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cp))	             
+                        alfa_j1=(B1-A1)/2.d0
+                        beta_j1=(B1+A1)/2.d0
+                        p2a = 0.d0		                    
+                        !IF ((B1-A1).gt.10.d-15) THEN
+                        IF ((B1-A1).gt.10.d-14) THEN	
+                            DO kj=1,Ngauss
+                                !value = 0.d0
+                                xinttrasl=(xint(kj)+1.d0)*0.5d0
+                                s=fi1(iplog,iqlog,xinttrasl)
+                                ds=dfi1(iplog,iqlog,xinttrasl)
+                                serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
+                                r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
+                                r(1)=CA+CB*xtrasl-CC*serv
+                                r(2)=CD+CE*xtrasl-CF*serv
+                                p2a = p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
+                                !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
+                                
+                                !if(ki .eq. 16) then
+                                !    print *, kj, wint(kj)
+                                !endif
+
+                                IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
+                                    p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt(dabs((cp*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
+                                    !p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt((cp*delta_x)**2-r2_1))-dlog(sqrt(r2_1)))
+                                ENDIF	
+                                !p2a = p2a + value
+                                !if(ki .eq. 16) then
+                                !    print *, kj, value
+                                !endif                            
+                            END DO
+                            !if(ki .eq. 16) then
+                            !    print *, ki, p2a
+                            !endif
+                        ENDIF
+                        p2=p2+p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
+                        !value = p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
+                        !p2 = p2 + value                    
+                        !print *, "cpu p2:",ki, value
+                        !print *,"cpu", ki, p2a                    				 
+                    END DO
+                    cputime =  cputime + omp_get_wtime() - START1
+                    
+                    !iterationCounter = iterationCounter + 1
+                    !print *, "iterationCounter", iterationCounter
+                    !print *,p2
+                    !pause
+                    !if(abs(value-p2) .gt. 1.d-10) then
+                    !    print *, "EP cpu", p2, "gpu", value
+                    !    pause
+                    !endif               
+                !print *,p2*alfa            
+                Vuextra_sub_P=Vuextra_sub_P+p2*alfa		 
+            else
+                Vuextra_sub_P=Vuextra_sub_P+0.d0
+            endif		 
+        enddo	     
+    else
+        DO ii=1,5!!!!!!!!!!!!!!!!!!!!!!!!integrazione nucleo su EP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!            
+            if(xx(ii+1)-xx(ii).gt.1.d-14)then
+                alfa_d=(xx(ii+1)-xx(ii))/2.d0
+                beta_d=(xx(ii+1)+xx(ii))/2.d0
+        
+                iplog_d=1
+                iqlog_d=1
+                if(curva_piu_meno(beta,flag_extra,1,cp).le.estremo_m)then
+                    iqlog_d=2
+                elseif((curva_piu_meno(x(ii),flag_extra,1,cp).eq.estremo_m).or.(curva_piu_meno(x(ii+1),flag_extra,1,cp).eq.estremo_m))then
+                    iqlog_d=2         
+                endif			
+
+                if(curva_piu_meno(beta,flag_extra,-1,cp).ge.0.d0)then
+                    iplog_d=2
+                elseif((curva_piu_meno(x(ii),flag_extra,-1,cp).eq.0.d0).or.(curva_piu_meno(x(ii+1),flag_extra,-1,cp).eq.0.d0))then
+                    iplog_d=2
+                endif
+		 
+                istat = cudaEventRecord(start,0)                
+
+                !print *, "call preCalculationEP<<<dimGrid,dimBlockPreCalculation>>>(alfa_d,beta_d,iplog_d, iqlog_d)"
+                call preCalculationEP<<<dimGrid,dimBlockPreCalculation>>>(alfa_d,beta_d,iplog_d, iqlog_d)
+                !print *, "performCalcEP<<<dimGrid,dimBlockCalculation>>>(alfa_d,result)"                
+                call performCalcEP<<<dimGrid,dimBlockCalculation,sizeof(app)*NGaussDimension*NGaussDimension>>>(alfa_d,CalculationResults(5+ii))
+                
+                !Vuextra_sub = Vuextra_sub + result
+
                 istat = cudaEventRecord(stop,0)
                 istat = cudaDeviceSynchronize()
-                istat = cudaEventElapsedTime(time, start, stop)
-                p2 = finalp2
+                istat = cudaEventElapsedTime(time, start, stop)                
                 gputime = gputime + time/(1.0e3)
 
                 ierrSync = cudaGetLastError()
                 if (ierrSync /= cudaSuccess) then
                     write(*,*) 'Sync kernel error:', cudaGetErrorString(ierrSync)
-                endif
-
-                !iterationCounter = iterationCounter + 1
-                !print *, "iterationCounter", iterationCounter
-                !print *, p2
-                !pause
-            else
-                p2 = 0.d0
-                START1 = omp_get_wtime() 
-                DO ki=1,Ngauss	
-                    xtrasl=alfa*x(ki)+beta
-                    A1=dmax1(0.d0,curva_piu_meno(xtrasl,flag_extra,-1,cp))
-                    B1=dmin1(estremo_m,curva_piu_meno(xtrasl,flag_extra,1,cp))	             
-                    alfa_j1=(B1-A1)/2.d0
-                    beta_j1=(B1+A1)/2.d0
-                    p2a = 0.d0		                    
-                    !IF ((B1-A1).gt.10.d-15) THEN
-                    IF ((B1-A1).gt.10.d-14) THEN	
-                        DO kj=1,Ngauss
-                            !value = 0.d0
-                            xinttrasl=(xint(kj)+1.d0)*0.5d0
-                            s=fi1(iplog,iqlog,xinttrasl)
-                            ds=dfi1(iplog,iqlog,xinttrasl)
-                            serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                            r2_1=(CA+CB*xtrasl-CC*serv)**2+(CD+CE*xtrasl-CF*serv)**2
-                            r(1)=CA+CB*xtrasl-CC*serv
-                            r(2)=CD+CE*xtrasl-CF*serv
-                            p2a = p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt(dabs((cp*delta_x)**2-r2_1))
-	                        !p2a = p2a + wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cp)*sqrt((cp*delta_x)**2-r2_1)
-	                        
-                            !if(ki .eq. 16) then
-                            !    print *, kj, wint(kj)
-                            !endif
-
-                            IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
-                                p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt(dabs((cp*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
-                                !p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*coeff_delta_kronecker*(1/cp**2)*(dlog(cp*delta_x+sqrt((cp*delta_x)**2-r2_1))-dlog(sqrt(r2_1)))
-                            ENDIF	
-                            !p2a = p2a + value
-                            !if(ki .eq. 16) then
-                            !    print *, kj, value
-                            !endif                            
-                        END DO
-                        !if(ki .eq. 16) then
-                        !    print *, ki, p2a
-                        !endif
-                    ENDIF
-                    p2=p2+p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
-                    !value = p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde,grado_q)
-                    !p2 = p2 + value                    
-                    !print *, "cpu p2:",ki, value
-                    !print *,"cpu", ki, p2a                    				 
-                END DO
-                cputime =  cputime + omp_get_wtime() - START1
-                
-                !iterationCounter = iterationCounter + 1
-                !print *, "iterationCounter", iterationCounter
-                !print *,p2
-                !pause
-                !if(abs(value-p2) .gt. 1.d-10) then
-                !    print *, "EP cpu", p2, "gpu", value
-                !    pause
-                !endif               
-            endif            
-             Vuextra_sub_P=Vuextra_sub_P+p2*alfa		 
-		 else
-		     Vuextra_sub_P=Vuextra_sub_P+0.d0
-         endif		 
-	 enddo	 
+                endif            
+            endif		 
+        enddo	 
+    endif
   endif
-  Vuextra_sub=Vuextra_sub_P+Vuextra_sub_S
+  if(useGpu .eq. 0) then
+      Vuextra_sub=Vuextra_sub_P+Vuextra_sub_S      
+  else
+    
+    do ii=1,10
+        !value = CalculationResults(ii)
+        !print *,value
+        Vuextra_sub = Vuextra_sub+CalculationResults(ii)
+    enddo    
+  endif
+  
   !print *, Vuextra_sub_P,Vuextra_sub_S
   !pause
   ! write(*,*) 'integrale cp', Vuextra_sub_P!!!!!!!!!!!!!!!!!

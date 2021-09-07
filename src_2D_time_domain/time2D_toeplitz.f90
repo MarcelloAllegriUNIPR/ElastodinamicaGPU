@@ -73,7 +73,9 @@ SUBROUTINE time2D_toeplitz(i_time,file_output)
     OPEN(i_time+6,FILE=TRIM(file_path_mat))
        DO i=1,2*DimVu      
          DO j=1,2*DimVu    
-			 WRITE(i_time+6,*) matrix(i,j),i,j 
+            !print *, matrix(i,j),i,j 
+            !pause
+            !WRITE(i_time+6,*) matrix(i,j),i,j 
         END DO
        END DO
      CLOSE(i_time+6)

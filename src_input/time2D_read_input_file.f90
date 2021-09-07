@@ -47,7 +47,7 @@ SUBROUTINE time2D_read_input_file(file_path,file_mesh,file_out)
   !Calcolo del passo temporale
   deltat=T_fin/Nt
   write(*,*) 'deltat', deltat
-  pause 
+  !pause 
   
   !Lettura del grado delle funzioni di forma per approssimare
   !l'incognita u
@@ -77,17 +77,17 @@ SUBROUTINE time2D_read_input_file(file_path,file_mesh,file_out)
   !lambda=-mu    
   lambda=(2.d0)**2*rho-2.d0*mu
   write(*,*) 'valore di lambda', lambda
-  pause
+  !pause
   
   !Calcolo della velocità delle onde P
   velC_P=DSQRT((lambda+2.d0*mu)/rho)
   write(*,*) 'cp', velC_P
-  pause
+  !pause
   
   !Calcolo della velocità delle onde P
   velC_S=DSQRT(mu/rho)
   write(*,*) 'cs', velC_S
-  pause
+  !pause
   
   !Chiusura del file di input
   CLOSE(10)

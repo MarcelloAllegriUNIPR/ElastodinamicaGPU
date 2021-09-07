@@ -3,7 +3,7 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   USE OMP_LIB !abilitazione openmp --> proprietà progetto --> proprietà di config --> fortran --> Language --> Process OpenMP Directives (Generate Parallel Code /QOpenMP)
   USE variable_2Dgeneral
   USE VuExtraGpu
-
+  use cudafor
   IMPLICIT NONE
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! VARIABILI !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -29,12 +29,19 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   fmt = '(I5.5)'
   ind_gauss = 6
   if (useGpu .eq. 0) then
-  dir='./../tests/output/cpu'
+    dir='./../tests/output/cpu'
   else
     dir='./../tests/output/gpu'
+    NGaussDimension = 2**(ind_gauss-1)
+    dimGrid = dim3(1,1,1)
+    dimBlockPreCalculation = dim3(NGaussDimension,1,1)
+    dimBlockCalculation = dim3(NGaussDimension,NGaussDimension,1)
+	  !sizeInBytes = sizeof(START)*NGaussDimension*NGaussDimension
+    dimension_d = NGaussDimension
+
     call setCommonData(gauss(ind_gauss)%pesiquad, gauss(ind_gauss)%pesiquad, &
                        gauss(ind_gauss)%nodiquad, gauss(ind_gauss)%nodiquad, &
-                       velC_P, velC_S, grado_q)
+                       velC_P, velC_S, grado_q)    
   endif
   ext='.txt'
 
@@ -42,6 +49,8 @@ START = omp_get_wtime()
 DO i_time=250,250
     CALL time2D_toeplitz(i_time,file_output);    
 end do
+
+
 !DO i_time=250,300
 !    CALL time2D_RHS(i_time,file_output)    
 !END DO
