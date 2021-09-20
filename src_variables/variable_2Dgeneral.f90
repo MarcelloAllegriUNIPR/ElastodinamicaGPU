@@ -1,6 +1,6 @@
 MODULE variable_2Dgeneral
     
-    use cudafor
+    use cudafor    
     !-- gpu --
     integer :: useGpu = 1
 
@@ -89,6 +89,7 @@ MODULE variable_2Dgeneral
   integer(kind=8) :: cpuwins=0, gpuwins=0, iterationCounter = 0
   double precision :: cputime=0, gputime=0
   type(dim3) :: dimGrid, dimBlockCalculation, dimBlockPreCalculation
+  type (dim3) :: VuExtraGrid, VuExtraBlock
 	integer :: sizeInBytes, NGaussDimension
-
+  
 END MODULE variable_2Dgeneral
