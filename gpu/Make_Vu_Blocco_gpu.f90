@@ -1,4 +1,4 @@
-attributes(host) Subroutine Make_Vu_Blocco_gpu(i,j,blocco,hk,indice_i,indice_j)  
+Subroutine Make_Vu_Blocco_gpu(i,j,hk,indice_i,indice_j)  
     !Subroutine che costruisce
     !i blocchetti per la matrice
     !Vu.
@@ -14,27 +14,17 @@ IMPLICIT NONE
 !Input
 INTEGER(kind=4),INTENT(IN):: i, j, hk, indice_i, indice_j
 
-!Input/Output
-!REAL(kind=8),DIMENSION(grado_q+1,grado_q+1),INTENT(OUT), device :: blocco
-REAL(kind=8),INTENT(OUT), device :: blocco !DIMENSION(grado_q+1,grado_q+1)
-
 !Variabili locali
 INTEGER(kind=4):: lf, lg
-REAL(kind=8),EXTERNAL:: Vuintegra
 
 !!!!!!!!!!!!!!!!!!!!!!!!!! CORPO della SUBROUTINE !!!!!!!!!!!!!!!!!!
 
 !Inizializzazione matrice blocco
 DO lg=1,grado_q+1
-    blocco = 0.d0
-END DO
-
-DO lg=1,grado_q+1
     DO lf=1,grado_q+1
-        call Vuintegra_gpu(i,lf,j,lg,hk,indice_i,indice_j,blocco)
+        call Vuintegra_gpu(i,lf,j,lg,hk,indice_i,indice_j)
     END DO
 END DO
 
 RETURN
 END SUBROUTINE Make_Vu_Blocco_gpu
-

@@ -2,6 +2,7 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
 
   USE OMP_LIB !abilitazione openmp --> proprietà progetto --> proprietà di config --> fortran --> Language --> Process OpenMP Directives (Generate Parallel Code /QOpenMP)
   USE variable_2Dgeneral
+  USE Variables
   use kernels
   USE VuExtraGpu
   use cudafor
@@ -15,7 +16,7 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   !Variabili locali
   INTEGER(kind=4):: rang, i_time, i, j
   INTEGER(kind=4):: AllocateStatus
-  Integer :: thread,tstart, tstop, rate, ind_gauss
+  Integer :: thread,tstart, tstop, rate, ind_gauss, istat
   !CHARACTER(len=8):: fmt  !Descrittore di formato
   CHARACTER(len=8):: i_time_st
   
@@ -29,6 +30,9 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   !(l'intero viene trasformato in una stringa di lunghezza 5 con 0 a sx)  
   fmt = '(I5.5)'
   ind_gauss = 6
+  ext='.txt'
+
+
   if (useGpu .eq. 0) then
     dir='./../tests/output/cpu'
   else
@@ -47,8 +51,28 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
                        gauss(ind_gauss)%nodiquad, gauss(ind_gauss)%nodiquad, &
                        velC_P, velC_S, grado_q)    
     rho_d = rho
+    DimVu_d = DimVu
+
+    do i = 1 , 2*(ind_gauss-1)*4
+      istat = cudaStreamCreate(stream(i))
+    enddo
+
+    delta_kronecker_VuExtra(1,1)=1  
+    delta_kronecker_VuExtra(1,2)=0  
+    delta_kronecker_VuExtra(2,1)=0  
+    delta_kronecker_VuExtra(2,2)=1
+
+    ALLOCATE(x_VuExtra(2**(ind_gauss-1)),STAT=AllocateStatus)
+    IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+  
+    x_VuExtra=gauss(ind_gauss)%nodiquad 
+
+    allocate (xtrasl(NGaussDimension), A1(NGaussDimension), B1(NGaussDimension), alfa_j1(NGaussDimension), beta_j1(NGaussDimension),&
+     xinttrasl(NGaussDimension),s(NGaussDimension),ds(NGaussDimension))
+
+     sharedMemDimension = NGaussDimension*NGaussDimension*sizeof(START)
   endif
-  ext='.txt'
+  
 
 START = omp_get_wtime()
 if(useGpu .eq. 0) then
@@ -56,9 +80,9 @@ if(useGpu .eq. 0) then
     CALL time2D_toeplitz(i_time,file_output);    
   end do
 else
-  DO i_time=250,250
-      CALL time2D_toeplitz_gpu(i_time,file_output);    
-  end do
+   DO i_time=250,250
+       CALL time2D_toeplitz_gpu(i_time,file_output);    
+   end do
 endif
 
 !DO i_time=250,300

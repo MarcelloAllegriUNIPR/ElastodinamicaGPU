@@ -1,19 +1,17 @@
 module kernels
    
    use cudafor
-    implicit NONE
-    
-    double precision, device :: rho_d
-    contains
+   use Variables
+   implicit NONE
+   
+   contains
 
 
-    attributes(global) subroutine copySharedMem(odata, idata, indice_i, indice_j)
+    attributes(global) subroutine copySharedMem(indice_i, indice_j)
 
-      double precision, intent(out) :: odata(640,640)
-      double precision, intent(in) :: idata(320,320)
-      integer , intent(in) :: indice_i, indice_j
+      integer , value :: indice_i, indice_j
 
-      real, shared :: tile(32, 32)
+      double precision, shared :: tile(blockDim%x, blockDim%x)
       integer :: x, y, j,TILE_DIM, BLOCK_ROWS = 8
 
       TILE_DIM = blockDim%x
@@ -22,19 +20,19 @@ module kernels
       y = (blockIdx%y-1) * TILE_DIM + threadIdx%y
 
       do j = 0, TILE_DIM-1, BLOCK_ROWS
-         tile(threadIdx%x, threadIdx%y+j) = idata(x,y+j)
+         tile(threadIdx%x, threadIdx%y+j) = Vu_device(x,y+j)
       end do
 
       call syncthreads()
 
       do j = 0, TILE_DIM-1, BLOCK_ROWS
-         odata(x+(320*(indice_i-1)),y+j+(320*(indice_j-1))) = tile(threadIdx%x, threadIdx%y+j)          
+         !matrix_device(x+(DimVu_d*(indice_i-1)),y+j+(DimVu_d*(indice_j-1))) = tile(threadIdx%x, threadIdx%y+j)          
       end do
   end subroutine copySharedMem
 
-  attributes(global) subroutine VuextraReduction(CalculationResults, finalResult)
+  attributes(global) subroutine VuextraReduction(CalculationResults, i, j)
       double precision, intent(in) :: CalculationResults(10,4)
-      double precision, intent(out) :: finalResult
+      integer, value :: i,j
       double precision, shared :: arrayCopy(10,4)
 
       arrayCopy(threadIdx%x,threadIdx%y) = CalculationResults(threadIdx%x,threadIdx%y)
@@ -56,6 +54,9 @@ module kernels
 
       call syncthreads()
 
-      if(threadIdx%x .eq. 1 .and. threadIdx%y .eq. 1) finalResult = -(1.d0/(8.d0*datan(1.d0)*rho_d))*(arrayCopy(1,1)-arrayCopy(1,2)-arrayCopy(1,3)+arrayCopy(1,4))
+      if(threadIdx%x .eq. 1 .and. threadIdx%y .eq. 1) then
+         Vu_device(i,j) = Vu_device(i,j)-(1.d0/(8.d0*datan(1.d0)*rho_d))*(arrayCopy(1,1)-arrayCopy(1,2)-arrayCopy(1,3)+arrayCopy(1,4))
+         !print *, Vu_device(i,j),i,j
+      endif
    end
 end module kernels

@@ -37,7 +37,7 @@ SUBROUTINE time2D_toeplitz(i_time,file_output)
          iblocco=grado_q+1
          jblocco=grado_q+1
          iriga=1
-         DO i=1,number_elements            
+         DO i=1,1            
              !call system_clock(tstart, rate);
          !***** STEP 1: Numerazione righe e colonne matrice
 	         IF ((grado_q.NE.INT(0,4)).and.ULeftAss(i)) THEN
@@ -67,18 +67,18 @@ SUBROUTINE time2D_toeplitz(i_time,file_output)
 	 END DO
   END DO
 
-  WRITE (i_time_st,fmt) i_time
-  file_mat=TRIM(file_output) // '_matrice_' // TRIM(i_time_st)
-  CALL filepath(file_path_mat,dir,file_mat,ext)  
-    OPEN(i_time+6,FILE=TRIM(file_path_mat))
-       DO i=1,2*DimVu      
-         DO j=1,2*DimVu    
-            !print *, matrix(i,j),i,j 
-            !pause
-            !WRITE(i_time+6,*) matrix(i,j),i,j 
-        END DO
-       END DO
-     CLOSE(i_time+6)
+!   WRITE (i_time_st,fmt) i_time
+!   file_mat=TRIM(file_output) // '_matrice_' // TRIM(i_time_st)
+!   CALL filepath(file_path_mat,dir,file_mat,ext)  
+!     OPEN(i_time+6,FILE=TRIM(file_path_mat))
+!        DO i=1,2*DimVu      
+!          DO j=1,2*DimVu    
+!             !print *, matrix(i,j),i,j 
+!             !pause
+!             WRITE(i_time+6,*) matrix(i,j),i,j 
+!         END DO
+!        END DO
+!      CLOSE(i_time+6)
 
     DEALLOCATE(Vu)
     DEALLOCATE(matrix)

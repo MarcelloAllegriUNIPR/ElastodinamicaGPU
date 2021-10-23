@@ -21,13 +21,13 @@
   !!!!!!!!!!!!!!!!!!!!!!!!!! CORPO della SUBROUTINE !!!!!!!!!!!!!!!!!!
       
       IF (i.eq.j) THEN
-        Vuintegra= 0.d0 !Vudiag(li,lj,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
+        Vuintegra=Vudiag(li,lj,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
       ELSE IF(list_elements(i)%nodes(1).EQ.list_elements(j)%nodes(2)) THEN
-        Vuintegra= 0.d0 !Vucont(li,lj,i,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
+        Vuintegra=Vucont(li,lj,i,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
       ELSE IF(list_elements(j)%nodes(1).EQ.list_elements(i)%nodes(2)) THEN      
-        Vuintegra= 0.d0 !Vucont(li,lj,i,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
+        Vuintegra=Vucont(li,lj,i,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
       ELSE IF((i.eq.number_elements.and.j.eq.1).or.(j.eq.number_elements.and.i.eq.1))then
-        Vuintegra= 0.d0 !Vucont(li,lj,i,j,hk,indice_i,indice_j) !!!!SOLO PER ARCO CHIUSO
+        Vuintegra=Vucont(li,lj,i,j,hk,indice_i,indice_j) !!!!SOLO PER ARCO CHIUSO
 	  ELSE
 	    Vuintegra=Vuextra(li,lj,i,j,hk,indice_i,indice_j) !ELASTODINAMICA NORMALE
 	  END IF

@@ -17,7 +17,7 @@ Double precision function uuextra_pp_sub(j,lj,x,y,tempo1,velC,velP,tempo2,indice
   INTEGER(kind=4):: AllocateStatus, ind_gauss, Ngauss, kj, k, l, jj
   INTEGER(kind=4),DIMENSION(2):: nodi_j
   REAL(kind=8),DIMENSION(:),ALLOCATABLE:: xx, ww
-  REAL(kind=8),DIMENSION(2):: coor_j1, coor_j2, r
+  REAL(kind=8),DIMENSION(2):: coor_j1, coor_j2, r_uuextra
   REAL(kind=8),DIMENSION(4):: p, DatoP, DatoS
   REAL(kind=8):: deltax, deltay, beta, gammaS, gammaP, dxS, dxP, xpos, ypos, r2, & 
                  len_j, csi1, csi2, cpi1, cpi2, app, dx, delta, dintP, dintS, &
@@ -87,15 +87,15 @@ Double precision function uuextra_pp_sub(j,lj,x,y,tempo1,velC,velP,tempo2,indice
 	         wwP=ww(kj)/2.d0
 	         xpos=coor_j1(1)+xxP*deltax
 	         ypos=coor_j1(2)+xxP*deltay
-			 r(1)=x-xpos
-			 r(2)=y-ypos
-	         r2=r(1)**2+r(2)**2   
+			 r_uuextra(1)=x-xpos
+			 r_uuextra(2)=y-ypos
+	         r2=r_uuextra(1)**2+r_uuextra(2)**2   
 			 rad=dmax1(dxP**2-r2,0.d0)
 			 !rad=dxP**2-r2
 			 
 			 dintP=dintP+wwP*fiU(lj,xxP,len_j,grado_q)*&
 			 !(dx*dsqrt(dxP**2-r2)/velP)
-			 ((r(jj)*r(indice_termine_noto)/r2**2-delta_kronecker(jj,indice_termine_noto)/(2*r2))*dx*dsqrt(rad)/velP+&
+			 ((r_uuextra(jj)*r_uuextra(indice_termine_noto)/r2**2-delta_kronecker(jj,indice_termine_noto)/(2*r2))*dx*dsqrt(rad)/velP+&
 			 (delta_kronecker(jj,indice_termine_noto)/2.d0)*(1/velP**2)*(dlog(dxP+dsqrt(rad))-dlog(dsqrt(r2))))
 			 ! if ((dxP**2-r2).lt.0.d0)then
 			     ! write(*,*) j, lj, x, y
@@ -123,15 +123,15 @@ Double precision function uuextra_pp_sub(j,lj,x,y,tempo1,velC,velP,tempo2,indice
 	             wwS=ww(kj)/2.d0
 	             xpos=coor_j1(1)+xxS*deltax
 	             ypos=coor_j1(2)+xxS*deltay
-			     r(1)=x-xpos
-			     r(2)=y-ypos
-	             r2=r(1)**2+r(2)**2   
+			     r_uuextra(1)=x-xpos
+			     r_uuextra(2)=y-ypos
+	             r2=r_uuextra(1)**2+r_uuextra(2)**2   
 			     rad=dmax1(dxS**2-r2,0.d0)
 				 !rad=dxs**2-r2
 				 
 			     dintS=dintS+wwS*fiU(lj,xxS,len_j,grado_q)*&
-				 !(r(jj)*r(indice_termine_noto)/r2**2)
-			     (-(r(jj)*r(indice_termine_noto)/r2**2-delta_kronecker(jj,indice_termine_noto)/(2*r2))*dx*dsqrt(rad)/velC+&
+				 !(r_uuextra(jj)*r_uuextra(indice_termine_noto)/r2**2)
+			     (-(r_uuextra(jj)*r_uuextra(indice_termine_noto)/r2**2-delta_kronecker(jj,indice_termine_noto)/(2*r2))*dx*dsqrt(rad)/velC+&
 			     (delta_kronecker(jj,indice_termine_noto)/2.d0)*(1/velC**2)*(dlog(dxS+dsqrt(rad))-dlog(dsqrt(r2))))
 		     END DO
          endif

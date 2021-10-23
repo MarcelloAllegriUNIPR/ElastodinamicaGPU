@@ -1,0 +1,19 @@
+module Variables
+    use cudafor
+
+    ! device variables
+    double precision, DIMENSION(:,:), ALLOCATABLE, device :: Vu_device, matrix_device
+    double precision, device :: rho_d
+    integer, device :: DimVu_d
+
+    ! host variables
+    double precision, DIMENSION(:,:), ALLOCATABLE:: matrix    
+    double precision :: delta_x_VuExtra(4)   
+    
+    integer :: sizeInBytes, NGaussDimension, cpuwins = 0, gpuwins = 0, iterationCounter = 0
+
+    type(dim3) :: dimGrid, dimBlockCalculation, dimBlockPreCalculation, VuExtraGrid, VuExtraBlock
+    integer(kind=cuda_stream_kind) :: stream(40)
+
+    double precision,allocatable, pinned , dimension(:) :: xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl,s,ds
+end module Variables

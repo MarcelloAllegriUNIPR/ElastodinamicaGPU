@@ -25,11 +25,11 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
   
   
   INTEGER(kind=4):: l_serv, l_var, e_serv, e_var
-  REAL(kind=8):: alpha, estremo_m, estremo_m_tilde, estremo_serv, estremo_var, th, tk, theta, theta2, &
+  REAL(kind=8):: alpha, estremo_m_Vucont, estremo_m_tilde_Vucont, estremo_serv, estremo_var, th, tk, theta, theta2, &
                  coeff_1, coeff_2, coeff_3, coeff_4, coeff_5, a, b, sS1, sS2, sP1, sP2, aa, bb, a_estr_esterno, &
 				 b_estr_esterno, dphi, cos_alpha, l_max
   INTEGER(kind=4), DIMENSION(2,2) :: delta_kronecker
-  REAL(kind=8), DIMENSION(2) :: sigma, r, vett_serv, vett_var
+  REAL(kind=8), DIMENSION(2) :: sigma, r_Vucont, vett_serv, vett_var
   REAL(kind=8), DIMENSION(2,10) :: ascisse_integrazione_S, ascisse_integrazione_SP, &
                                    ascisse_integrazione_S_1, ascisse_integrazione_S_2, &
                                    ascisse_integrazione_SP_1, ascisse_integrazione_SP_2								   
@@ -41,22 +41,22 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
   cs=velC_S
   cp=velC_P
   
-  estremo_m=list_elements(e_m)%length
-  estremo_m_tilde=list_elements(e_m_tilde)%length
+  estremo_m_Vucont=list_elements(e_m)%length
+  estremo_m_tilde_Vucont=list_elements(e_m_tilde)%length
   
   if(e_m.lt.e_m_tilde)then
   !(e_m.lt.e_m_tilde.and.&
   !     (e_m.ne.1.and.e_m_tilde.ne.number_elements).or.&
 	!   (e_m.eq.number_elements.and.e_m_tilde.eq.1))then
-	 estremo_serv=estremo_m
-	 estremo_var=estremo_m_tilde
+	 estremo_serv=estremo_m_Vucont
+	 estremo_var=estremo_m_tilde_Vucont
 	 l_serv=l_m
 	 l_var=l_m_tilde
 	 e_serv=e_m
      e_var=e_m_tilde
   else
-	 estremo_serv=estremo_m_tilde
-	 estremo_var=estremo_m
+	 estremo_serv=estremo_m_tilde_Vucont
+	 estremo_var=estremo_m_Vucont
 	 l_serv=l_m_tilde
 	 l_var=l_m 
 	 e_serv=e_m_tilde
@@ -884,10 +884,10 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
 	                     ds=dfi1(iplog,iqlog,xinttrasl)
 	                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
                          r2_1=(estremo_serv-serv)**2+xtrasl**2-2*(estremo_serv-serv)*xtrasl*COS(alpha)
-						 r(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
-						 r(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
+						 r_Vucont(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
+						 r_Vucont(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
 		   
-	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2-cs**2)/(cp*cs))*delta_x*(cp*dsqrt((cs**2)*(delta_x**2)-r2_1)+cs*dsqrt((cp**2)*(delta_x**2)-r2_1))**(-1)*(r(indice_i)*r(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
+	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2-cs**2)/(cp*cs))*delta_x*(cp*dsqrt((cs**2)*(delta_x**2)-r2_1)+cs*dsqrt((cp**2)*(delta_x**2)-r2_1))**(-1)*(r_Vucont(indice_i)*r_Vucont(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
 	    
 	                     IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
 	    
@@ -1004,10 +1004,10 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
 	                     ds=dfi1(iplog,iqlog,xinttrasl)
 	                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
                          r2_1=(estremo_serv-serv)**2+xtrasl**2-2*(estremo_serv-serv)*xtrasl*COS(alpha)
-						 r(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
-						 r(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
+						 r_Vucont(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
+						 r_Vucont(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
 
-	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2-cs**2)/(cp*cs))*delta_x*(cp*dsqrt((cs**2)*(delta_x**2)-r2_1)+cs*dsqrt((cp**2)*(delta_x**2)-r2_1))**(-1)*(r(indice_i)*r(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
+	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2-cs**2)/(cp*cs))*delta_x*(cp*dsqrt((cs**2)*(delta_x**2)-r2_1)+cs*dsqrt((cp**2)*(delta_x**2)-r2_1))**(-1)*(r_Vucont(indice_i)*r_Vucont(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
 	    
 	                     IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
 	    
@@ -1123,10 +1123,10 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
 	                     ds=dfi1(iplog,iqlog,xinttrasl)
 	                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
                          r2_1=(estremo_serv-serv)**2+xtrasl**2-2*(estremo_serv-serv)*xtrasl*COS(alpha)
-						 r(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
-						 r(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
+						 r_Vucont(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
+						 r_Vucont(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
 
-	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2*r2_1)**(-1))*cp*delta_x*dsqrt(dabs(-r2_1+cp**2*delta_x**2))*(r(indice_i)*r(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
+	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2*r2_1)**(-1))*cp*delta_x*dsqrt(dabs(-r2_1+cp**2*delta_x**2))*(r_Vucont(indice_i)*r_Vucont(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
 	    
 	                     IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
 	    
@@ -1237,10 +1237,10 @@ Double precision function Vucont_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,i
 	                     ds=dfi1(iplog,iqlog,xinttrasl)
 	                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
                          r2_1=(estremo_serv-serv)**2+xtrasl**2-2*(estremo_serv-serv)*xtrasl*COS(alpha)
-						 r(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
-						 r(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
+						 r_Vucont(1)=(estremo_serv-serv)*COS(theta)+xtrasl*COS(theta2)
+						 r_Vucont(2)=(estremo_serv-serv)*SIN(theta)+xtrasl*SIN(theta2)
 						 
-	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2*r2_1)**(-1))*cp*delta_x*dsqrt(dabs(-r2_1+cp**2*delta_x**2))*(r(indice_i)*r(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
+	                     p2a = p2a + wint(kj)*ds*fiU(l_serv,serv,estremo_serv,grado_q)*((cp**2*r2_1)**(-1))*cp*delta_x*dsqrt(dabs(-r2_1+cp**2*delta_x**2))*(r_Vucont(indice_i)*r_Vucont(indice_j)/r2_1-delta_kronecker(indice_i,indice_j)/2.d0)
 	    
 	                     IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
 	    
