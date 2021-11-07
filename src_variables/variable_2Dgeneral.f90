@@ -84,12 +84,12 @@ MODULE variable_2Dgeneral
   END TYPE gauss_type
   
   TYPE(gauss_type),POINTER:: gauss(:) => null()
-  INTEGER(kind=4):: number_gauss 
+  INTEGER(kind=4):: number_gauss, N_Gauss, ind_gauss_d
 
-  INTEGER(kind=4) :: delta_kronecker_VuExtra(2,2), flag_extra, sharedMemDimension
-  REAL(kind=8),DIMENSION(:),ALLOCATABLE :: x_VuExtra
+!   INTEGER(kind=4) :: delta_kronecker_VuExtra(2,2), flag_extra, sharedMemDimension
+!   REAL(kind=8),DIMENSION(:),ALLOCATABLE :: x_VuExtra
 
-  REAL(kind=8), DIMENSION(2) :: r, punto_m_1, punto_m_2, punto_m_tilde_1, punto_m_tilde_2
-  double precision :: estremo_m, estremo_m_tilde, coeff_delta_kronecker, CA, CB, CC, CE, CF, CD,&
-   CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA, cputime = 0.d0, gputime = 0.d0
+   ! REAL(kind=8), DIMENSION(2) :: r, punto_m_1, punto_m_2, punto_m_tilde_1, punto_m_tilde_2
+  double precision :: cputime = 0.d0, gputime = 0.d0 !estremo_m, estremo_m_tilde, coeff_delta_kronecker, CA, CB, CC, CE, CF, CD,&
+   !CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA, 
 END MODULE variable_2Dgeneral

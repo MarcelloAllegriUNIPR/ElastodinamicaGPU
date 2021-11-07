@@ -1,0 +1,192 @@
+module data_utils
+
+    use Variables_DP
+    use variable_2Dgeneral
+    use cudafor
+    implicit none 
+
+    contains
+    attributes(host) subroutine allocateCommonVariables(DimVu, Ngauss)
+
+        integer, intent(in) :: DimVu, Ngauss
+        integer :: AllocateStatus  
+		
+        ALLOCATE(x_d(NGauss),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(w_d(NGauss),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(xint_d(NGauss),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(wint_d(NGauss),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+
+        ALLOCATE(punto_m_1(DimVu,2),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(punto_m_2(DimVu,2),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(punto_m_tilde_1(DimVu,2),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(punto_m_tilde_2(DimVu,2),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+
+        ALLOCATE(estremo_m(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(estremo_m_tilde(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CB(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CC(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CE(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CF(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(IsULeftAssI(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(IsULeftAssJ(DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+
+        ALLOCATE(CA(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CD(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CBCFCECC(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CFCACCCD(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CBCDCECA(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CBCCCECF(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CACCCFCD(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(CACBCDCE(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(flag_extra(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(Vu_d(DimVu,DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+
+        ALLOCATE(matrix_d(2*DimVu,2*DimVu),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ALLOCATE(list_elements_d(2*DimVu,2),STAT=AllocateStatus)
+        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+
+	end subroutine allocateCommonVariables
+
+    attributes(host) subroutine copyCommonData()
+        
+        integer :: index
+
+        wint_d = gauss(ind_gauss_d)%pesiquad
+        w_d = gauss(ind_gauss_d)%pesiquad
+        x_d = gauss(ind_gauss_d)%nodiquad
+        xint_d = gauss(ind_gauss_d)%nodiquad
+
+        do index=1, DimVu
+            punto_m_1(index,1:2)=list_nodes(index)%coordinates(1:2)            
+            punto_m_tilde_1(index,1:2)=list_nodes(index)%coordinates(1:2)
+
+            list_elements_d(index,1:2) = list_elements(index)%nodes(1:2)
+        enddo
+
+        do index=2, DimVu
+            punto_m_2(index-1,1:2)=list_nodes(index)%coordinates(1:2)
+            punto_m_tilde_2(index-1,1:2)=list_nodes(index)%coordinates(1:2)
+        enddo
+
+        delta_t_d = deltat        
+        rho_d = rho
+        cp_d = velC_P
+        cs_d = velC_S
+
+        grado_q_d = grado_q
+        DimVu_d = dimVu
+
+        delta_kronecker_d(1,1) = 1
+        delta_kronecker_d(1,2) = 0
+        delta_kronecker_d(2,1) = 0
+        delta_kronecker_d(2,2) = 1
+        
+    end subroutine copyCommonData
+
+    attributes(host) subroutine setCommonData(total_elements)
+    
+        integer, intent(in) :: total_elements
+        integer :: ierrAsync,ierrSync
+        type(dim3) :: grid, tBlock, tBlock1
+
+        grid = dim3(1, 1, 1)
+        tblock = dim3(total_elements, 1, 1)
+        tblock1 = dim3(total_elements, 1, 1)
+
+        call populateIDependentVariables<<<grid,tblock>>>()
+        call populateJDependentVariables<<<grid,tblock>>>()
+
+        ierrSync= cudaGetLastError()
+        ierrAsync= cudaDeviceSynchronize()
+        if(ierrSync /= cudaSuccess) write(*,*) 'Sync kernel error: ' , cudaGetErrorString(ierrSync)
+        if(ierrAsync /= cudaSuccess) write(*,*) 'Async kernel error : ', cudaGetErrorString(ierrAsync)
+        
+        call populateIJDependentVariables<<<grid,tblock1>>>()
+
+        ierrSync= cudaGetLastError()
+        ierrAsync= cudaDeviceSynchronize()
+        if(ierrSync /= cudaSuccess) write(*,*) 'Sync kernel error: ' , cudaGetErrorString(ierrSync)
+        if(ierrAsync /= cudaSuccess) write(*,*) 'Async kernel error : ', cudaGetErrorString(ierrAsync)
+	end subroutine setCommonData
+
+    attributes(global) subroutine populateIDependentVariables()        
+
+        integer :: i
+
+        i = threadIdx%x
+        
+        estremo_m_tilde(i)=sqrt((punto_m_tilde_2(i,1)-punto_m_tilde_1(i,1))**2+(punto_m_tilde_2(i,2)-punto_m_tilde_1(i,2))**2)        
+        CB(i)=(punto_m_tilde_2(i,1)-punto_m_tilde_1(i,1))/estremo_m_tilde(i)        
+        CE(i)=(punto_m_tilde_2(i,2)-punto_m_tilde_1(i,2))/estremo_m_tilde(i)        
+        
+    end subroutine populateIDependentVariables
+
+    attributes(global) subroutine populateJDependentVariables()        
+
+        integer :: j
+
+        j = threadIdx%x
+        
+        estremo_m(j)=sqrt((punto_m_2(j,1)-punto_m_1(j,1))**2+(punto_m_2(j,2)-punto_m_1(j,2))**2)        
+        CC(j)=(punto_m_2(j,1)-punto_m_1(j,1))/estremo_m(j)
+        CF(j)=(punto_m_2(j,2)-punto_m_1(j,2))/estremo_m(j)
+        
+    end subroutine populateJDependentVariables
+
+    attributes(global) subroutine populateIJDependentVariables()        
+
+        integer :: i,j
+
+        i = threadIdx%x
+        
+        do j = 1, blockDim%x
+            CA(i,j)=punto_m_tilde_1(i,1)-punto_m_1(j,1)        
+            CD(i,j)=punto_m_tilde_1(i,2)-punto_m_1(j,2)
+            
+            CBCFCECC(i,j)=CB(i)*CF(j)-CE(i)*CC(j)
+            CFCACCCD(i,j)=CF(j)*CA(i,j)-CC(j)*CD(i,j)
+            CBCDCECA(i,j)=CB(i)*CD(i,j)-CE(i)*CA(i,j)
+            CBCCCECF(i,j)=CB(i)*CC(j)+CE(i)*CF(j)
+            CACCCFCD(i,j)=CA(i,j)*CC(j)+CF(j)*CD(i,j)
+            CACBCDCE(i,j)=CA(i,j)*CB(i)+CD(i,j)*CE(i)
+
+            !if(i.eq.1 .and. j.eq.3) print *, CBCCCECF(i,j)
+
+            if((dabs(CBCFCECC(i,j)).le.1.d-15).and.(dabs(CFCACCCD(i,j)).le.1.d-15)) then
+                flag_extra(i,j)=1
+            elseif((dabs(CBCFCECC(i,j)).le.1.d-15).and.(dabs(CFCACCCD(i,j)).gt.1.d-15)) then
+                flag_extra(i,j)=2    !	paralleli
+            else
+                flag_extra(i,j)=3    !   non allineati non paralleli          
+            endif
+        enddo   
+    end subroutine populateIJDependentVariables
+
+end module data_utils

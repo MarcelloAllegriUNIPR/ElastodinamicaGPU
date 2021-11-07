@@ -1,131 +1,132 @@
 module VuExtraGpu
 
 	use cudafor
+	use Variables_DP
 	implicit none
 
-	real(kind=8),dimension(:),allocatable,device :: wint_d, xint_d, w_d, x_d !,alfa_d
-	real(kind=8),dimension(:,:),allocatable,device	:: xtrasl_d, A1_d, B1_d, alfa_j1_d, beta_j1_d, xinttrasl_d,s_d,ds_d,p2a_d
-	real(kind=8), device :: CA_d, CB_d, CC_d, CE_d, CF_d, CD_d, &
-							coeff_delta_kronecker_d, delta_x_d(4), cs_d,cp_d, &
-							estremo_m_d, estremo_m_tilde_d, CBCFCECC_d, CFCACCCD_d, &
-							CBCCCECF_d, CACCCFCD_d, CACBCDCE_d, CBCDCECA_d, finalResult, dimension_d
+	! real(kind=8),dimension(:),allocatable,device :: wint_d, xint_d, w_d, x_d !,alfa_d
+	! real(kind=8),dimension(:,:),allocatable,device	:: xtrasl_d, A1_d, B1_d, alfa_j1_d, beta_j1_d, xinttrasl_d,s_d,ds_d,p2a_d
+	! real(kind=8), device :: CA_d, CB_d, CC_d, CE_d, CF_d, CD_d, &
+	! 						coeff_delta_kronecker_d, delta_x_d(4), cs_d,cp_d, &
+	! 						estremo_m_d, estremo_m_tilde_d, CBCFCECC_d, CFCACCCD_d, &
+	! 						CBCCCECF_d, CACCCFCD_d, CACBCDCE_d, CBCDCECA_d, finalResult, dimension_d
 							
-	integer(kind=4), dimension(2,2), device :: delta_kronecker_d
-	integer(kind=4), device :: indice_i_d, indice_j_d, dimX_d, dimY_d, flag_extra_d,&
-							   grado_q_d, l_m_tilde_d,l_m_d
+	! integer(kind=4), dimension(2,2), device :: delta_kronecker_d
+	! integer(kind=4), device :: indice_i_d, indice_j_d, dimX_d, dimY_d, flag_extra_d,&
+	! 						   grado_q_d, l_m_tilde_d,l_m_d
 
-	contains
+	 contains
 	
-	attributes(host) subroutine setCommonData(wint, w, xint, x, cp, cs, grado_q)
+	! attributes(host) subroutine setCommonData(wint, w, xint, x, cp, cs, grado_q)
 
-        integer :: istat, AllocateStatus   
-        integer, intent(in) :: grado_q
-        double precision, intent(in) :: cs, cp	
-        double precision, dimension(:), intent(in) :: wint, w, xint, x
+    !     integer :: istat, AllocateStatus   
+    !     integer, intent(in) :: grado_q
+    !     double precision, intent(in) :: cs, cp	
+    !     double precision, dimension(:), intent(in) :: wint, w, xint, x
 		
-        ALLOCATE(x_d(dimension_d),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(w_d(dimension_d),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(xint_d(dimension_d),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(wint_d(dimension_d),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-		!ALLOCATE(p2_d(dimension),STAT=AllocateStatus) 		
-        !IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(xtrasl_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(A1_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(B1_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(alfa_j1_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(beta_j1_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(xinttrasl_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(s_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(ds_d(dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		ALLOCATE(p2a_d(dimension_d*dimension_d,40),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
-		! ALLOCATE(alfa_d(40),STAT=AllocateStatus)
-        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+    !     ALLOCATE(x_d(dimension_d),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+    !     ALLOCATE(w_d(dimension_d),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+    !     ALLOCATE(xint_d(dimension_d),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+    !     ALLOCATE(wint_d(dimension_d),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+	! 	!ALLOCATE(p2_d(dimension),STAT=AllocateStatus) 		
+    !     !IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(xtrasl_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(A1_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(B1_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(alfa_j1_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(beta_j1_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(xinttrasl_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(s_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(ds_d(dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	ALLOCATE(p2a_d(dimension_d*dimension_d,40),STAT=AllocateStatus)
+    !     IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
+	! 	! ALLOCATE(alfa_d(40),STAT=AllocateStatus)
+    !     ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***" 
 		
-		!inizializzabili 1 sola volta
-		wint_d = wint
-		w_d = w
-		x_d = x
-		xint_d = xint	
-		grado_q_d = grado_q_d
-		delta_kronecker_d(1,1) = 1
-        delta_kronecker_d(1,2) = 0
-        delta_kronecker_d(2,1) = 0
-        delta_kronecker_d(2,2) = 1
-		cp_d = cp
-        cs_d = cs		
+	! 	!inizializzabili 1 sola volta
+	! 	wint_d = wint
+	! 	w_d = w
+	! 	x_d = x
+	! 	xint_d = xint	
+	! 	grado_q_d = grado_q_d
+	! 	delta_kronecker_d(1,1) = 1
+    !     delta_kronecker_d(1,2) = 0
+    !     delta_kronecker_d(2,1) = 0
+    !     delta_kronecker_d(2,2) = 1
+	! 	cp_d = cp
+    !     cs_d = cs		
 
-		!print *, "copia effettuata"
-	end subroutine setCommonData
+	! 	!print *, "copia effettuata"
+	! end subroutine setCommonData
 
-	attributes(host) subroutine setInstanceCommonData( &
-	CA, CB, CC, CD, CE, CF, flag_extra, estremo_m, &
-	l_m_tilde,l_m,estremo_m_tilde, CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, &
-	CACBCDCE, CBCDCECA)
+	! attributes(host) subroutine setInstanceCommonData( &
+	! CA, CB, CC, CD, CE, CF, flag_extra, estremo_m, &
+	! l_m_tilde,l_m,estremo_m_tilde, CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, &
+	! CACBCDCE, CBCDCECA)
 
-		double precision, intent(in) :: CA, CB, CC, CE, CF, CD, &
-									 estremo_m, estremo_m_tilde, & 
-									 CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA	!delta_x
-		integer, intent(in) ::  flag_extra, l_m_tilde, l_m
+	! 	double precision, intent(in) :: CA, CB, CC, CE, CF, CD, &
+	! 								 estremo_m, estremo_m_tilde, & 
+	! 								 CBCFCECC, CFCACCCD, CBCCCECF, CACCCFCD, CACBCDCE, CBCDCECA	!delta_x
+	! 	integer, intent(in) ::  flag_extra, l_m_tilde, l_m
 
-		!cambiano ad ogni chiamata di vuextraSub
-		!delta_x_d = delta_x
+	! 	!cambiano ad ogni chiamata di vuextraSub
+	! 	!delta_x_d = delta_x
 			
-		!indice_i_d = indice_i
-		!indice_j_d = indice_j
-		CA_d = CA
-		CB_d = CB
-		CC_d = CC
-		CD_d = CD
-		CE_d = CE
-		CF_d = CF		        
-		flag_extra_d = flag_extra
-		l_m_tilde_d = l_m_tilde
-		l_m_d = l_m
-		estremo_m_d = estremo_m
-		estremo_m_tilde_d = estremo_m_tilde
+	! 	!indice_i_d = indice_i
+	! 	!indice_j_d = indice_j
+	! 	CA_d = CA
+	! 	CB_d = CB
+	! 	CC_d = CC
+	! 	CD_d = CD
+	! 	CE_d = CE
+	! 	CF_d = CF		        
+	! 	flag_extra_d = flag_extra
+	! 	l_m_tilde_d = l_m_tilde
+	! 	l_m_d = l_m
+	! 	estremo_m_d = estremo_m
+	! 	estremo_m_tilde_d = estremo_m_tilde
 		
 
-		CBCFCECC_d = CBCFCECC
-		CFCACCCD_d = CFCACCCD
-		CBCCCECF_d = CBCCCECF 
-		CACCCFCD_d = CACCCFCD
-		CACBCDCE_d = CACBCDCE
-		CBCDCECA_d = CBCDCECA
-		finalResult = 0.d0
-	end subroutine setInstanceCommonData
+	! 	CBCFCECC_d = CBCFCECC
+	! 	CFCACCCD_d = CFCACCCD
+	! 	CBCCCECF_d = CBCCCECF 
+	! 	CACCCFCD_d = CACCCFCD
+	! 	CACBCDCE_d = CACBCDCE
+	! 	CBCDCECA_d = CBCDCECA
+	! 	finalResult = 0.d0
+	! end subroutine setInstanceCommonData
 
-	attributes(host) subroutine garbageCollector
-		deallocate(x_d)
-		deallocate(xint_d)
-		deallocate(w_d)
-		deallocate(p2a_d)        
-	end subroutine
+	! attributes(host) subroutine garbageCollector
+	! 	deallocate(x_d)
+	! 	deallocate(xint_d)
+	! 	deallocate(w_d)
+	! 	deallocate(p2a_d)        
+	! end subroutine
 
-	attributes(device) FUNCTION curva_piu_meno_gpu(x_linea,tipo_allineamento,segno,vel,delta_X_index) !!! per definire le rette dei domini in caso di elementi allineati (o eventualmete limiti delle ordinate)
-		REAL(kind=8) :: curva_piu_meno_gpu, x_linea, vel
-		INTEGER(kind=4) :: tipo_allineamento, segno, delta_X_index
-		select case (tipo_allineamento)
-		   case (1)!!!!!allineati
-			curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*vel*delta_x_d(delta_X_index)
-		   case (2)!!!!!paralleli
-			curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*sqrt(dabs((vel*delta_x_d(delta_X_index))**2-(CFCACCCD_d)**2))
-		   case (3)!!!!!generici
-			curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*sqrt(dabs(-(CBCFCECC_d*x_linea)**2+2*CBCFCECC_d*(-CFCACCCD_d)*x_linea-(CFCACCCD_d)**2+vel**2*delta_x_d(delta_X_index)**2))
-		end select
-	END FUNCTION curva_piu_meno_gpu
+	! attributes(device) FUNCTION curva_piu_meno_gpu(x_linea,tipo_allineamento,segno,vel,delta_x) !!! per definire le rette dei domini in caso di elementi allineati (o eventualmete limiti delle ordinate)
+	! 	REAL(kind=8) :: curva_piu_meno_gpu, x_linea, vel, delta_x
+	! 	INTEGER(kind=4) :: tipo_allineamento, segno
+	! 	select case (tipo_allineamento)
+	! 	   case (1)!!!!!allineati
+	! 		curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*vel*delta_x
+	! 	   case (2)!!!!!paralleli
+	! 		curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*sqrt(dabs((vel*delta_x)**2-(CFCACCCD_d)**2))
+	! 	   case (3)!!!!!generici
+	! 		curva_piu_meno_gpu=CBCCCECF_d*x_linea+CACCCFCD_d+sign(1,segno)*sqrt(dabs(-(CBCFCECC_d*x_linea)**2+2*CBCFCECC_d*(-CFCACCCD_d)*x_linea-(CFCACCCD_d)**2+vel**2*delta_x**2))
+	! 	end select
+	! END FUNCTION curva_piu_meno_gpu
 
 	attributes(device) Double precision function fiU_gpu(l,x,lung,grado_q)
 		IMPLICIT NONE	 
@@ -224,263 +225,263 @@ module VuExtraGpu
 
 	! end subroutine preCalculationEP
 
-	attributes(global) subroutine performCalcES(alfa_d,iterationIndex,delta_X_index)
+	! attributes(global) subroutine performCalcES(alfa_d,iterationIndex,delta_X_index)
 
-		use Gauss_Gpu
+	! 	use Gauss_Gpu
 		
-		integer :: ki, kj
-		integer, intent(in) :: iterationIndex, delta_X_index
-		double precision, intent(in) :: alfa_d		
-		double precision :: serv, r2_1, r(2)
-		double precision, shared :: p2a(blockdim%x,blockdim%y)
+	! 	integer :: ki, kj
+	! 	integer, intent(in) :: iterationIndex, delta_X_index
+	! 	double precision, intent(in) :: alfa_d		
+	! 	double precision :: serv, r2_1, r(2)
+	! 	double precision, shared :: p2a(blockdim%x,blockdim%y)
 		
-		ki = threadIdx%x		
-		kj = threadIdx%y
+	! 	ki = threadIdx%x		
+	! 	kj = threadIdx%y
 		
-		!if(ki .eq. 1 .and. kj .eq. 1) print *,alfa_d
+	! 	!if(ki .eq. 1 .and. kj .eq. 1) print *,alfa_d
 
-		IF ((B1_d(ki,iterationIndex)-A1_d(ki,iterationIndex)).gt.10.d-14) THEN				
-				serv=alfa_j1_d(ki,iterationIndex)*(2.d0*s_d(kj,iterationIndex)-1.d0)+beta_j1_d(ki,iterationIndex)				
-				r2_1=(CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv)**2+(CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv)**2				
-				r(1)=CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv
-				r(2)=CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv
-				p2a(ki,kj) = -wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*(r(indice_i_d)*r(indice_j_d)/(r2_1**2)-coeff_delta_kronecker_d/r2_1)*(delta_x_d(delta_X_index)/cs_d)*sqrt(dabs((cs_d*delta_x_d(delta_X_index))**2-r2_1))
+	! 	IF ((B1_d(ki,iterationIndex)-A1_d(ki,iterationIndex)).gt.10.d-14) THEN				
+	! 			serv=alfa_j1_d(ki,iterationIndex)*(2.d0*s_d(kj,iterationIndex)-1.d0)+beta_j1_d(ki,iterationIndex)				
+	! 			r2_1=(CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv)**2+(CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv)**2				
+	! 			r(1)=CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv
+	! 			r(2)=CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv
+	! 			p2a(ki,kj) = -wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*(r(indice_i_d)*r(indice_j_d)/(r2_1**2)-coeff_delta_kronecker_d/r2_1)*(delta_x_d(delta_X_index)/cs_d)*sqrt(dabs((cs_d*delta_x_d(delta_X_index))**2-r2_1))
 				
-				 IF (delta_kronecker_d(indice_i_d,indice_j_d).eq.1.d0) THEN	                        
-				    p2a(ki,kj)= p2a(ki,kj)+wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cs_d**2)*(dlog(cs_d*delta_x_d(delta_X_index)+sqrt(dabs((cs_d*delta_x_d(delta_X_index))**2-r2_1)))-dlog(sqrt(r2_1)))	                         
-				 ENDIF
+	! 			 IF (delta_kronecker_d(indice_i_d,indice_j_d).eq.1.d0) THEN	                        
+	! 			    p2a(ki,kj)= p2a(ki,kj)+wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cs_d**2)*(dlog(cs_d*delta_x_d(delta_X_index)+sqrt(dabs((cs_d*delta_x_d(delta_X_index))**2-r2_1)))-dlog(sqrt(r2_1)))	                         
+	! 			 ENDIF
 				
-				 !if(ki .eq. 16) print *, p2a(ki,kj),ki,kj
+	! 			 !if(ki .eq. 16) print *, p2a(ki,kj),ki,kj
 
-				 p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a(ki,kj)
-				!  call syncthreads()
+	! 			 p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a(ki,kj)
+	! 			!  call syncthreads()
 
-				!  if(kj.le.16) p2a(ki,kj) = p2a(ki,kj) + p2a(ki,kj+16)
+	! 			!  if(kj.le.16) p2a(ki,kj) = p2a(ki,kj) + p2a(ki,kj+16)
 
-				!  call syncthreads()
+	! 			!  call syncthreads()
 
-				!  if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
+	! 			!  if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
 
-				!  call syncthreads()
+	! 			!  call syncthreads()
 
-				!  if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
+	! 			!  if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
 
-				!  call syncthreads()
+	! 			!  call syncthreads()
 
-				!  if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
+	! 			!  if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
 
-				!  call syncthreads()
+	! 			!  call syncthreads()
 
-				!  if(kj .eq. 1) then 
-				!  	p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
+	! 			!  if(kj .eq. 1) then 
+	! 			!  	p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
 				
-				!  	call syncthreads()
+	! 			!  	call syncthreads()
 				
-				!    	if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)				 	
+	! 			!    	if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)				 	
 					
-				!  	call syncthreads()
+	! 			!  	call syncthreads()
 
-				!   	if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+	! 			!   	if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
 					 
-				!  	call syncthreads()
+	! 			!  	call syncthreads()
 
-				!    	if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
+	! 			!    	if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
 
-				!   	call syncthreads()
+	! 			!   	call syncthreads()
 
-				!   	if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+	! 			!   	if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
 
-				!   	call syncthreads()
+	! 			!   	call syncthreads()
 
-				!    	if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d				 	
-				!  endif
+	! 			!    	if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d				 	
+	! 			!  endif
 
-				! do index = blockdim%y, 1, -index/2
-				! 	call syncthreads()
-				! 	if(kj .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+index)
-				! end do			
+	! 			! do index = blockdim%y, 1, -index/2
+	! 			! 	call syncthreads()
+	! 			! 	if(kj .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+index)
+	! 			! end do			
 				
-				! if(kj .eq. 1) then
-				! 	call syncthreads()
-				! 	p2a(ki,kj) = p2a(ki,kj)*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
+	! 			! if(kj .eq. 1) then
+	! 			! 	call syncthreads()
+	! 			! 	p2a(ki,kj) = p2a(ki,kj)*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
 
-				! 	do index = blockdim%x, 1, -index/2
-				! 		call syncthreads()
-				! 		if(ki .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+index,kj)
-				! 	end do
-				! endif
-			endif
+	! 			! 	do index = blockdim%x, 1, -index/2
+	! 			! 		call syncthreads()
+	! 			! 		if(ki .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+index,kj)
+	! 			! 	end do
+	! 			! endif
+	! 		endif
 		
-	end
+	! end
 
-	attributes(global) subroutine performCalcEP(alfa_d,iterationIndex,delta_X_index)
+	! attributes(global) subroutine performCalcEP(alfa_d,iterationIndex,delta_X_index)
 
-		use Gauss_Gpu
+	! 	use Gauss_Gpu
 
-		integer :: ki, kj
-		integer, intent(in) :: iterationIndex, delta_X_index
-		double precision, intent(in) :: alfa_d		
-		double precision :: serv, r2_1, r(2)
-		double precision, shared :: p2a(blockdim%x,blockdim%y)
+	! 	integer :: ki, kj
+	! 	integer, intent(in) :: iterationIndex, delta_X_index
+	! 	double precision, intent(in) :: alfa_d		
+	! 	double precision :: serv, r2_1, r(2)
+	! 	double precision, shared :: p2a(blockdim%x,blockdim%y)
 
-		ki = threadIdx%x
-		kj = threadIdx%y		
+	! 	ki = threadIdx%x
+	! 	kj = threadIdx%y		
 		
-		IF ((B1_d(ki,iterationIndex)-A1_d(ki,iterationIndex)).gt.10.d-14) THEN				
-				serv=alfa_j1_d(ki,iterationIndex)*(2.d0*s_d(kj,iterationIndex)-1.d0)+beta_j1_d(ki,iterationIndex)
-				r2_1=(CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv)**2+(CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv)**2
-				r(1)=CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv
-				r(2)=CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv
-				p2a(ki,kj) = +wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*(r(indice_i_d)*r(indice_j_d)/(r2_1**2)-coeff_delta_kronecker_d/r2_1)*(delta_x_d(delta_X_index)/cp_d)*sqrt(dabs((cp_d*delta_x_d(delta_X_index))**2-r2_1))
+	! 	IF ((B1_d(ki,iterationIndex)-A1_d(ki,iterationIndex)).gt.10.d-14) THEN				
+	! 			serv=alfa_j1_d(ki,iterationIndex)*(2.d0*s_d(kj,iterationIndex)-1.d0)+beta_j1_d(ki,iterationIndex)
+	! 			r2_1=(CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv)**2+(CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv)**2
+	! 			r(1)=CA_d+CB_d*xtrasl_d(ki,iterationIndex)-CC_d*serv
+	! 			r(2)=CD_d+CE_d*xtrasl_d(ki,iterationIndex)-CF_d*serv
+	! 			p2a(ki,kj) = +wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*(r(indice_i_d)*r(indice_j_d)/(r2_1**2)-coeff_delta_kronecker_d/r2_1)*(delta_x_d(delta_X_index)/cp_d)*sqrt(dabs((cp_d*delta_x_d(delta_X_index))**2-r2_1))
 				
-				IF (delta_kronecker_d(indice_i_d,indice_j_d).eq.1.d0) THEN	                        
-					p2a(ki,kj)= p2a(ki,kj)+wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cp_d**2)*(dlog(cp_d*delta_x_d(delta_X_index)+sqrt(dabs((cp_d*delta_x_d(delta_X_index))**2-r2_1)))-dlog(sqrt(r2_1)))
-				ENDIF				
+	! 			IF (delta_kronecker_d(indice_i_d,indice_j_d).eq.1.d0) THEN	                        
+	! 				p2a(ki,kj)= p2a(ki,kj)+wint_d(kj)*ds_d(kj,iterationIndex)*fiU_gpu(l_m_d,serv,estremo_m_d,grado_q_d)*coeff_delta_kronecker_d*(1/cp_d**2)*(dlog(cp_d*delta_x_d(delta_X_index)+sqrt(dabs((cp_d*delta_x_d(delta_X_index))**2-r2_1)))-dlog(sqrt(r2_1)))
+	! 			ENDIF				
 
-				!if(ki .eq. 16) print *, p2a(ki,kj),kj
+	! 			!if(ki .eq. 16) print *, p2a(ki,kj),kj
 				
-				p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a(ki,kj)
+	! 			p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a(ki,kj)
 				
-				! call syncthreads()
+	! 			! call syncthreads()
 				
-				! if(kj.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)
+	! 			! if(kj.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)
 				
-				! call syncthreads()
+	! 			! call syncthreads()
 
-				! if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
+	! 			! if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
 
-				! call syncthreads()
+	! 			! call syncthreads()
 
-				! if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
+	! 			! if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
 
-				! call syncthreads()
+	! 			! call syncthreads()
 
-				! if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
+	! 			! if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
 
-				! call syncthreads()
+	! 			! call syncthreads()
 
-				! if(kj .eq. 1) then
-				! 	p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
+	! 			! if(kj .eq. 1) then
+	! 			! 	p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
 				
-				! 	call syncthreads()
+	! 			! 	call syncthreads()
 				
-				! 	if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
+	! 			! 	if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
 					
-				! 	call syncthreads()
+	! 			! 	call syncthreads()
 
-				! 	if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+	! 			! 	if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
 
-				! 	call syncthreads()
+	! 			! 	call syncthreads()
 
-				! 	if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
+	! 			! 	if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
 
-				! 	call syncthreads()
+	! 			! 	call syncthreads()
 
-				! 	if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+	! 			! 	if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
 
-				! 	call syncthreads()
+	! 			! 	call syncthreads()
 
-				! 	if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d
-				! endif
+	! 			! 	if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d
+	! 			! endif
 
 				
-		ENDIF		
-	end 
+	! 	ENDIF		
+	! end 
 
-	attributes(global) subroutine sum_p2a(alfa_d,iterationIndex, result)
+	! attributes(global) subroutine sum_p2a(alfa_d,iterationIndex, result)
 		
-		integer :: ki, kj, index
-		integer, intent(in) :: iterationIndex
-		double precision, intent(in) :: alfa_d
-		double precision, intent(out) :: result
-		double precision, shared :: p2a(blockdim%x,blockdim%y)
-		double precision :: testValue
+	! 	integer :: ki, kj, index
+	! 	integer, intent(in) :: iterationIndex
+	! 	double precision, intent(in) :: alfa_d
+	! 	double precision, intent(out) :: result
+	! 	double precision, shared :: p2a(blockdim%x,blockdim%y)
+	! 	double precision :: testValue
 
-		ki = threadIdx%x
-		kj = threadIdx%y
+	! 	ki = threadIdx%x
+	! 	kj = threadIdx%y
 		
-		!p2a(ki,kj) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex)
+	! 	!p2a(ki,kj) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex)
 
-		! if(ki.eq.16) then
-		! 	testValue = p2a(ki,kj)
-		! 	print *, testValue, ki,kj
-		! endif
+	! 	! if(ki.eq.16) then
+	! 	! 	testValue = p2a(ki,kj)
+	! 	! 	print *, testValue, ki,kj
+	! 	! endif
 
-		! index = blockdim%y
-		! do 
-		! 	call syncthreads()
-		! 	index = index/2
-		! 	if(kj .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+index)
-		! 	if(index.eq.1) exit
-		! end do
+	! 	! index = blockdim%y
+	! 	! do 
+	! 	! 	call syncthreads()
+	! 	! 	index = index/2
+	! 	! 	if(kj .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+index)
+	! 	! 	if(index.eq.1) exit
+	! 	! end do
 
-		! if(kj .eq. 1) then
-		! 	call syncthreads()
-		! 	p2a(ki,kj) = p2a(ki,kj)*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
+	! 	! if(kj .eq. 1) then
+	! 	! 	call syncthreads()
+	! 	! 	p2a(ki,kj) = p2a(ki,kj)*alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
 			
-		! 	index = blockdim%x
-		! 	do 
-		! 		call syncthreads()
-		! 		index = index/2
-		! 		if(ki .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+index,kj)
-		! 		if(index.eq.1) exit
-		! 	end do
+	! 	! 	index = blockdim%x
+	! 	! 	do 
+	! 	! 		call syncthreads()
+	! 	! 		index = index/2
+	! 	! 		if(ki .le. index) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+index,kj)
+	! 	! 		if(index.eq.1) exit
+	! 	! 	end do
 
-		! 	if(ki .eq. 1) result=p2a(ki,kj)*alfa_d
-		! endif
+	! 	! 	if(ki .eq. 1) result=p2a(ki,kj)*alfa_d
+	! 	! endif
 
-		! call syncthreads()				
-		! if(kj.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)
-		! call syncthreads()
-		! if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
+	! 	! call syncthreads()				
+	! 	! if(kj.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)
+	! 	! call syncthreads()
+	! 	! if(kj .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
 
-		do index = 1,blockdim%x/blockdim%y
-			p2a(ki,kj)= p2a(ki,kj)+p2a_d(((ki-1)*blockdim%x)+(threadIdx%y+((index-1)*8)),iterationIndex)
-		end do
+	! 	do index = 1,blockdim%x/blockdim%y
+	! 		p2a(ki,kj)= p2a(ki,kj)+p2a_d(((ki-1)*blockdim%x)+(threadIdx%y+((index-1)*8)),iterationIndex)
+	! 	end do
 
-		 call syncthreads()
-		 if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
-		 call syncthreads()
-		 if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
-		 call syncthreads()
+	! 	 call syncthreads()
+	! 	 if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
+	! 	 call syncthreads()
+	! 	 if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
+	! 	 call syncthreads()
 		 
-		! call syncthreads()				
-		!  if(kj.le.16) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+16,iterationIndex)
-		!  call syncthreads()
-		!  if(kj .le. 8) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+8,iterationIndex)
-		!  call syncthreads()
-		!  if(kj .le. 4) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+4,iterationIndex)
-		!  call syncthreads()
-		!  if(kj .le. 2) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+2,iterationIndex)
-		!  call syncthreads()
+	! 	! call syncthreads()				
+	! 	!  if(kj.le.16) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+16,iterationIndex)
+	! 	!  call syncthreads()
+	! 	!  if(kj .le. 8) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+8,iterationIndex)
+	! 	!  call syncthreads()
+	! 	!  if(kj .le. 4) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+4,iterationIndex)
+	! 	!  call syncthreads()
+	! 	!  if(kj .le. 2) p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) = p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y,iterationIndex) + p2a_d(((threadIdx%x-1)*blockdim%x)+threadIdx%y+2,iterationIndex)
+	! 	!  call syncthreads()
 		
-		if(kj .eq. 1) then
-		 	p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+1)&
-			 *alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
+	! 	if(kj .eq. 1) then
+	! 	 	p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+1)&
+	! 		 *alfa_j1_d(ki,iterationIndex)*w_d(ki)*fiU_gpu(l_m_tilde_d,xtrasl_d(ki,iterationIndex),estremo_m_tilde_d,grado_q_d)
 
-			call syncthreads()				
-			if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
-			call syncthreads()
-			if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
-			call syncthreads()
-			if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
-			call syncthreads()
-			if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
-			call syncthreads()
+	! 		call syncthreads()				
+	! 		if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
+	! 		call syncthreads()
+	! 		if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+	! 		call syncthreads()
+	! 		if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
+	! 		call syncthreads()
+	! 		if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+	! 		call syncthreads()
 			
-			if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d
+	! 		if(ki .eq. 1) result = (p2a(ki,kj)+p2a(ki+1,kj))*alfa_d
 			
-			 ! call syncthreads()				
-			! if(ki.le.16) p2a(ki) = p2a(ki)+p2a(ki+16)
-			! call syncthreads()
-			! if(ki .le. 8) p2a(ki) = p2a(ki)+p2a(ki+8)
-			! call syncthreads()
-			! if(ki .le. 4) p2a(ki) = p2a(ki)+p2a(ki+4)
-			! call syncthreads()
-			! if(ki .le. 2) p2a(ki) = p2a(ki)+p2a(ki+2)
-			! call syncthreads()
+	! 		 ! call syncthreads()				
+	! 		! if(ki.le.16) p2a(ki) = p2a(ki)+p2a(ki+16)
+	! 		! call syncthreads()
+	! 		! if(ki .le. 8) p2a(ki) = p2a(ki)+p2a(ki+8)
+	! 		! call syncthreads()
+	! 		! if(ki .le. 4) p2a(ki) = p2a(ki)+p2a(ki+4)
+	! 		! call syncthreads()
+	! 		! if(ki .le. 2) p2a(ki) = p2a(ki)+p2a(ki+2)
+	! 		! call syncthreads()
 			
-			! if(ki .eq. 1) result = (p2a(ki)+p2a(ki+1))*alfa_d
-		endif
-	end
+	! 		! if(ki .eq. 1) result = (p2a(ki)+p2a(ki+1))*alfa_d
+	! 	endif
+	! end
 end module VuExtraGpu
