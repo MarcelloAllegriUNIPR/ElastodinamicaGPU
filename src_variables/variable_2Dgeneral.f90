@@ -1,6 +1,6 @@
 MODULE variable_2Dgeneral
     
-    use cudafor    
+    use cudafor
     !-- gpu --
     integer :: useGpu = 1
 

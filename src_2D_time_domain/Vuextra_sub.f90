@@ -245,7 +245,7 @@ endif
                     p2a = 0.d0                    
                     IF ((B1-A1).gt.10.d-14) THEN	                 
                         DO kj=1,Ngauss     
-                            ! value = 0.d0                       
+                            value = 0.d0                       
                             xinttrasl=(xint(kj)+1.d0)*0.5d0
                             s=fi1(iplog,iqlog,xinttrasl)
                             ds=dfi1(iplog,iqlog,xinttrasl)
@@ -256,6 +256,11 @@ endif
                             p2a = p2a - wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*(r_vuextra(indice_i)*r_vuextra(indice_j)/(r2_1**2)-coeff_delta_kronecker_vuextra/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))							                            
                             !if(ki .eq. 16) value = - wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*(r_vuextra(indice_i)*r_vuextra(indice_j)/(r2_1**2)-coeff_delta_kronecker_vuextra/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))
                             !value = -wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*(r_vuextra(indice_i)*r_vuextra(indice_j)/(r2_1**2)-coeff_delta_kronecker_vuextra/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))							                            
+                            !if(ki .eq. 16) then
+                            !   value= value+wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*coeff_delta_kronecker_vuextra*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
+                            !    print *, kj, value
+                            !endif
+                            
                             IF (delta_kronecker(indice_i,indice_j).eq.1.d0) THEN
                                 p2a= p2a+wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*coeff_delta_kronecker_vuextra*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))                                
                                 !value= value+wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*coeff_delta_kronecker_vuextra*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))                                
@@ -263,7 +268,8 @@ endif
                                 !     value= value+wint(kj)*ds*fiU(l_m,serv,estremo_m_Vuextra,grado_q)*coeff_delta_kronecker_vuextra*(1/cs**2)*(dlog(cs*delta_x+sqrt(dabs((cs*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))
                                 !     print *,value, ki,kj
                                 ! endif
-                            ENDIF                            					
+                            ENDIF
+                            p2a = p2a+value
                         END DO
                     ENDIF
                     p2 = p2 + p2a*alfa_j1*w(ki)*fiU(l_m_tilde,xtrasl,estremo_m_tilde_Vuextra,grado_q)
@@ -272,7 +278,7 @@ endif
                 END DO
                 cputime =  cputime + omp_get_wtime() - START1               
                 !pause
-                print *,'ES',p2*alfa, e_m_tilde, e_m
+                !print *,'ES',p2*alfa, e_m_tilde, e_m
                 Vuextra_sub_S=Vuextra_sub_S+p2*alfa             
             else
                 Vuextra_sub_S=Vuextra_sub_S+0.d0
@@ -486,7 +492,7 @@ endif
                     !    pause
                     !endif               
                 ! print *,p2*alfa,'479'
-                print *,'EP',p2*alfa, e_m_tilde, e_m
+                !print *,'EP',p2*alfa, e_m_tilde, e_m
                 Vuextra_sub_P=Vuextra_sub_P+p2*alfa		 
             else
                 Vuextra_sub_P=Vuextra_sub_P+0.d0
@@ -534,8 +540,10 @@ endif
     endif
   endif
   !if(useGpu .eq. 0) then
+  Vuextra_sub=Vuextra_sub_P+Vuextra_sub_S 
+  print *,Vuextra_sub_S, Vuextra_sub_P, e_m_tilde, e_m
   pause
-      Vuextra_sub=Vuextra_sub_P+Vuextra_sub_S 
+      
       !pause     
   !else
     

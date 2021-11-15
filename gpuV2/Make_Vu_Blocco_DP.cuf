@@ -7,10 +7,11 @@ module kernel_MakeVuBlocco
 
     attributes(global) subroutine Make_Vu_Blocco_DP(hk)
         integer, intent(in) :: hk        
-        integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val
-        double precision, shared, dimension(blockDim%x, blockDim%y) :: p2a
-        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, delta_x, &
-                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, ds, serv, r2_1, r(2), finalValue
+        integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index
+        double precision, shared, dimension(blockDim%x+1, blockDim%y) :: p2a
+        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, delta_x(4), &
+                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, &
+                            ds, serv, r2_1, r(2), VuExtra(4)
 
         
         i=blockIdx%x
@@ -20,9 +21,6 @@ module kernel_MakeVuBlocco
         ki = threadIdx%x
         kj = threadIdx%y
         
-        ! TODO : implementare x ogni casistica
-        delta_x = hk*delta_t_d
-
         if(i .gt. DimVu_d) then
             i = i-DimVu_d
             indice_i = 2
@@ -35,6 +33,11 @@ module kernel_MakeVuBlocco
         
         l_m = 1
         l_m_tilde = 1
+        
+        delta_x(1) = hk*delta_t_d
+        delta_x(2) = (hk*delta_t_d)-delta_t_d
+        delta_x(3) = (hk+1)*delta_t_d
+        delta_x(4) = ((hk+1)*delta_t_d)-delta_t_d
 
         !if(i.eq.1 .and. j.eq.3 .and. ki.eq.1 .and. kj.eq.1) print *, "passed"
         if((i .ne. j) .and. &
@@ -42,171 +45,339 @@ module kernel_MakeVuBlocco
             (list_elements_d(j,1).ne.list_elements_d(i,2)) .and. &
             (i.ne.DimVu_d .or. j.ne.1) .and. &
             (j.ne.DimVu_d .or. i.ne.1)) then            
-            
-            deltaquartiS=(cs_d*delta_x)**2-CFCACCCD(i,j)**2
-            deltaquartiP=(cp_d*delta_x)**2-CFCACCCD(i,j)**2
-    
-            deltaquartiS_bis=(cs_d*delta_x)**2-CBCDCECA(i,j)**2
-            deltaquartiP_bis=(cp_d*delta_x)**2-CBCDCECA(i,j)**2
-    
-            deltaquartiS_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cs_d*delta_x)**2
-            deltaquartiP_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cp_d*delta_x)**2
-            
+            do delta_x_index=1,4
+                !delta_x_index=2
 
-            !if(ki.eq.1 .and. kj.eq.1) print *, blockIdx%y, CBCFCECC(i,j), deltaquartiP
-            
-            ! INTEGRAZIONE su EP
-            if((CBCFCECC(i,j).ne.0.d0).and.(deltaquartiP.gt.0.d0)) then
-
-                if(flag_extra(i,j) .eq. 1) then
-                    if(CBCCCECF(i,j).lt.0.d0)then
-                        xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x
-                        xx(4)=-CACBCDCE(i,j)+cp_d*delta_x
-                        xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x,-CACBCDCE(i,j)-cp_d*delta_x)
-                        xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x,-CACBCDCE(i,j)-cp_d*delta_x)
-                        xx(5)=xx(4)
-                        xx(6)=xx(4)
-                    else
-                        xx(1)=-CACBCDCE(i,j)-cp_d*delta_x
-                        xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x
-                        xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x,-CACBCDCE(i,j)+cp_d*delta_x)
-                        xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x,-CACBCDCE(i,j)+cp_d*delta_x)       
-                        xx(5)=xx(4)
-                        xx(6)=xx(4)
-                    endif                
-                elseif(flag_extra(i,j) .eq. 2) then
-                    if(CBCCCECF(i,j).lt.0.d0)then
-                        xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis)
-                        xx(4)=-CACBCDCE(i,j)+sqrt(deltaquartiP_bis)
-                        xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
-                        xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
-                        xx(5)=xx(4)
-                        xx(6)=xx(4)
-                    else
-                        xx(1)=-CACBCDCE(i,j)-sqrt(deltaquartiP_bis)
-                        xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis)
-                        xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
-                        xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
-                        xx(5)=xx(4)
-                        xx(6)=xx(4)				 
-                    endif
-                elseif(flag_extra(i,j) .eq. 3) then
-                    xx(1)=dmin1((CFCACCCD(i,j)-cp_d*delta_x)/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x)/(-CBCFCECC(i,j)))
-                    xx(6)=dmax1((CFCACCCD(i,j)-cp_d*delta_x)/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x)/(-CBCFCECC(i,j)))
-                    if(deltaquartiP_bis.ge.0.d0)then
-                        xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiP_bis)
-                        xx(3)=-(CACBCDCE(i,j))+sqrt(deltaquartiP_bis)
-                    else		 
-                        xx(2)=xx(1)
-                        xx(3)=xx(1)
-                    endif
-                    if(deltaquartiP_bbis.ge.0.d0)then
-                        xx(4)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)-sqrt(deltaquartiP_bbis)
-                        xx(5)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)+sqrt(deltaquartiP_bbis)
-                    else		 
-                        xx(4)=xx(6)
-                        xx(5)=xx(6)
-                    endif
-                endif
-
-                do ii=2,6 !ordinamento dei punti con insertion sort
-                    app=xx(ii)       
-                    jj=ii-1
-                    do while (jj.ge.1)
-                        if (xx(jj).gt.app) then
-                            xx(jj+1)=xx(jj)
-                            jj=jj-1 
-                            xx(jj+1)=app
-                        else 
-                            exit
+                deltaquartiS=(cs_d*delta_x(delta_x_index))**2-CFCACCCD(i,j)**2        
+                deltaquartiS_bis=(cs_d*delta_x(delta_x_index))**2-CBCDCECA(i,j)**2        
+                deltaquartiS_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cs_d*delta_x(delta_x_index))**2                
+                
+                ! INTEGRAZIONE su ES
+                IF((CBCFCECC(i,j).ne.0.d0).or.(deltaquartiS.ge.0.d0)) then
+                    if(flag_extra(i,j).eq.1) then
+                        if(CBCCCECF(i,j).lt.0.d0)then                        
+                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index)                            
+                            xx(4)=-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index)                            
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index))                            
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index))                            
+                            xx(5)=xx(4)                            
+                            xx(6)=xx(4)                        
+                        else                    
+                            xx(1)=-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index)                    
+                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index)                    
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index))                    
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index))                    
+                            xx(5)=xx(4)                    
+                            xx(6)=xx(4)                    
                         endif
+                    elseif(flag_extra(i,j).eq.2) then
+                        if(CBCCCECF(i,j).lt.0.d0)then                    
+                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis)                    
+                            xx(4)=-CACBCDCE(i,j)+sqrt(deltaquartiS_bis)                    
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis),-CACBCDCE(i,j)-sqrt(deltaquartiS_bis))                    
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis),-CACBCDCE(i,j)-sqrt(deltaquartiS_bis))                    
+                            xx(5)=xx(4)                    
+                            xx(6)=xx(4)                    
+                        else                    
+                            xx(1)=-CACBCDCE(i,j)-sqrt(deltaquartiS_bis)                    
+                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis)
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis),-CACBCDCE(i,j)+sqrt(deltaquartiS_bis))                    
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis),-CACBCDCE(i,j)+sqrt(deltaquartiS_bis))                    
+                            xx(5)=xx(4)
+                            xx(6)=xx(4)                        
+                        endif
+                    elseif(flag_extra(i,j).eq.3) then                    
+                        xx(1)=dmin1((CFCACCCD_vuextra-cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra),(CFCACCCD_vuextra+cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra))                    
+                        xx(6)=dmax1((CFCACCCD_vuextra-cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra),(CFCACCCD_vuextra+cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra))
+                    
+                        if(deltaquartiS_bis.ge.0.d0)then
+                            xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiS_bis)                    
+                            xx(3)=-(CACBCDCE(i,j))+sqrt(deltaquartiS_bis)                    
+                        else                    
+                            xx(2)=xx(1)                    
+                            xx(3)=xx(1)                    
+                        endif                    
+                        if(deltaquartiS_bbis.ge.0.d0)then                    
+                            xx(4)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)-sqrt(deltaquartiS_bbis)                    
+                            xx(5)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)+sqrt(deltaquartiS_bbis)                    
+                        else                    
+                            xx(4)=xx(6)                    
+                            xx(5)=xx(6)                    
+                        endif                
+                    endif
+
+                    DO ii=2,6 !!!!!!!!!!!!!!!!ordinamento dei punti con insertion sort                    
+                        app=xx(ii)                            
+                        jj=ii-1                    
+                        do while (jj.ge.1)                    
+                            if (xx(jj).gt.app) then                    
+                                xx(jj+1)=xx(jj)                    
+                                jj=jj-1
+                                xx(jj+1)=app                    
+                            else                    
+                                exit                    
+                            endif                    
+                        enddo                    
                     enddo
-                enddo                
-                
-                do ii=1,6 !taglio fuori i punti  minori di zero e maggiori di estremo_m_tilde(i,j)
-                    if(xx(ii).lt.0.d0) xx(ii)=0.d0                    
-                    if(xx(ii).gt.estremo_m_tilde(i)) xx(ii)=estremo_m_tilde(i)                    
-                enddo
+                            
+                    
+                    do ii=1,6!!!!!!!!!!!!!!!!!taglio fuori i punti  minori di zero e maggiori di estremo_m_tilde                    
+                        if(xx(ii).lt.0.d0) xx(ii)=0.d0                    
+                        if(xx(ii).gt.estremo_m_tilde(i)) xx(ii)=estremo_m_tilde(i)                                    
+                    enddo                
+                        
+                    DO ii=1,5
+                        if(xx(ii+1)-xx(ii).gt.1.d-14)then
+                            alfa=(xx(ii+1)-xx(ii))/2.d0                    
+                            beta=(xx(ii+1)+xx(ii))/2.d0                           
+                            iplog=1                           
+                            iqlog=1
 
-                DO ii=1,5
-                    if(xx(ii+1)-xx(ii).gt.1.d-14)then
-                        alfa=(xx(ii+1)-xx(ii))/2.d0
-                        beta=(xx(ii+1)+xx(ii))/2.d0
-                
-                        iplog=1
-                        iqlog=1
-                        if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cp_d,delta_x,i,j).le.estremo_m(j)) then
-                            iqlog=2
-                        elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cp_d,delta_x,i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cp_d,delta_x,i,j).eq.estremo_m(j))) then
-                            iqlog=2         
-                        endif			
-        
-                        if(curva_piu_meno_gpu(beta,flag_extra(i,j),-1,cp_d,delta_x,i,j).ge.0.d0)then
-                            iplog=2
-                        elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),-1,cp_d,delta_x,i,j).eq.0.d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),-1,cp_d,delta_x,i,j).eq.0.d0))then
-                            iplog=2
+                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).le.estremo_m(j)) then                    
+                                iqlog=2                    
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)))then                    
+                                iqlog=2                    
+                            endif          
+                            
+                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).ge.0.d0)then
+                                iplog=2
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).eq.0.d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).eq.0.d0))then
+                                iplog=2
+                            endif
+                            
+                            xtrasl=alfa*x_d(ki)+beta
+                            A1=dmax1(0.d0,curva_piu_meno_gpu(xtrasl,flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j))
+                            B1=dmin1(estremo_m(j),curva_piu_meno_gpu(xtrasl,flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j))
+                            alfa_j1=(B1-A1)/2.d0
+                            beta_j1=(B1+A1)/2.d0                             
+                            p2a(ki,kj) = 0.d0                            
+                            IF ((B1-A1).gt.10.d-14) THEN	                 
+                                do index=0,3
+                                    val = blockDim%y*index                                
+                                    xinttrasl=(xint_d(kj+val)+1.d0)*0.5d0                                    
+                                    s=fi1_d(iplog,iqlog,xinttrasl)                                    
+                                    ds=dfi1_d(iplog,iqlog,xinttrasl)                                    
+                                    serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
+                                    r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2                                    
+                                    r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
+                                    r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv
+                                    p2a(ki,kj)=p2a(ki,kj)-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))                               
+                                    
+                                    ! if(ki.eq.16 .and. index.eq.0) print *,p2a(ki,kj),kj
+                                    
+                                    IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN
+                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cs_d**2)*(dlog(cs_d*delta_x(delta_x_index)+sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))
+                                    endif
+                                    
+                                END DO                                
+                            ENDIF
+
+                            call syncthreads()
+                            if(kj .le. 4) then 
+                                if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),p2a(ki,kj+4),kj
+                                p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
+                                ! if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),kj
+                            endif
+                            call syncthreads()
+
+                            if(kj .le. 2) then 
+                                p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
+                                !if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),kj
+                            endif                            
+                            call syncthreads()
+
+                            if(kj .eq. 1) then                               
+                                
+                                call syncwarp(kj)
+                                p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tilde(i),grado_q_d)                                
+
+                                call syncthreads()				
+                                if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
+                                call syncthreads()
+                                if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+                                call syncthreads()
+                                if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
+                                call syncthreads()
+                                if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+                                call syncthreads()
+                                
+                                if(ki .eq. 1) then
+                                    Vuextra(delta_x_index) = (p2a(ki,kj)+p2a(ki+1,kj))*alfa                                
+                                    print *, "ES", Vuextra(delta_x_index), delta_x_index                                  
+                                endif
+                            endif                            
                         endif
-                        
-                        xtrasl=alfa*x_d(ki)+beta
-                        A1=dmax1(0.d0,curva_piu_meno_gpu(xtrasl,flag_extra(i,j),-1,cp_d,delta_x,i,j))
-                        B1=dmin1(estremo_m(j),curva_piu_meno_gpu(xtrasl,flag_extra(i,j),1,cp_d,delta_x,i,j))	             
-                        alfa_j1=(B1-A1)/2.d0
-                        beta_j1=(B1+A1)/2.d0
-                        p2a(ki,kj) = 0.d0
-                        IF ((B1-A1).gt.10.d-14) THEN
-                            do index=0,3
-                                val = blockDim%y*index
-                                xinttrasl=(xint_d(kj+val)+1.d0)*0.5d0
-                                s=fi1_d(iplog,iqlog,xinttrasl)
-                                ds=dfi1_d(iplog,iqlog,xinttrasl)
-                                serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                                r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2
-                                r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
-                                r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv                            
-                                p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x/cp_d)*sqrt(dabs((cp_d*delta_x)**2-r2_1))
-                                
-                                !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)
-                                
-                                IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN                                
-                                    p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cp_d**2)*(dlog(cp_d*delta_x+sqrt(dabs((cp_d*delta_x)**2-r2_1)))-dlog(sqrt(r2_1)))                            
-                                ENDIF    
-                                
-                                !if(ki.eq.16 .and. index.eq.3) print *, kj+val, p2a(ki,kj)
-                            enddo                          
-                        ENDIF
-                        
-                        call syncthreads()				
-                        ! if(kj.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)
-                        ! call syncthreads()
-                        ! if(kj.le.8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)
-                        ! call syncthreads()
-                        if(kj .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
-                        call syncthreads()
-                        if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
-                        call syncthreads()
-		
-                        if(kj .eq. 1) then
-                            p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tilde(i),grado_q_d)
+                    END DO
+                endif
+            
+                deltaquartiP=(cp_d*delta_x(delta_x_index))**2-CFCACCCD(i,j)**2
+                deltaquartiP_bis=(cp_d*delta_x(delta_x_index))**2-CBCDCECA(i,j)**2
+                deltaquartiP_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cp_d*delta_x(delta_x_index))**2
+                
+                ! INTEGRAZIONE su EP
+                if((CBCFCECC(i,j).ne.0.d0).or.(deltaquartiP.ge.0.d0)) then
 
-                            !if(ki.eq.16) print *,p2a(ki,kj), ki
-
-                            call syncthreads()				
-                            if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
+                    if(flag_extra(i,j) .eq. 1) then
+                        if(CBCCCECF(i,j).lt.0.d0)then
+                             xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index)
+                            xx(4)=-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index)
+                             xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index))
+                             xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index))
+                             xx(5)=xx(4)
+                             xx(6)=xx(4)
+                         else
+                             xx(1)=-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index)
+                             xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index)
+                             xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index))
+                             xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index))       
+                             xx(5)=xx(4)
+                             xx(6)=xx(4)
+                         endif                
+                    elseif(flag_extra(i,j) .eq. 2) then
+                        if(CBCCCECF(i,j).lt.0.d0)then
+                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis)
+                            xx(4)=-CACBCDCE(i,j)+sqrt(deltaquartiP_bis)
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
+                            xx(5)=xx(4)
+                            xx(6)=xx(4)
+                        else
+                            xx(1)=-CACBCDCE(i,j)-sqrt(deltaquartiP_bis)
+                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis)
+                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
+                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
+                            xx(5)=xx(4)
+                            xx(6)=xx(4)				 
+                        endif
+                    elseif(flag_extra(i,j) .eq. 3) then
+                        xx(1)=dmin1((CFCACCCD(i,j)-cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
+                        xx(6)=dmax1((CFCACCCD(i,j)-cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
+                        if(deltaquartiP_bis.ge.0.d0)then
+                            xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiP_bis)
+                            xx(3)=-(CACBCDCE(i,j))+sqrt(deltaquartiP_bis)
+                        else		 
+                            xx(2)=xx(1)
+                            xx(3)=xx(1)
+                        endif
+                        if(deltaquartiP_bbis.ge.0.d0)then
+                            xx(4)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)-sqrt(deltaquartiP_bbis)
+                            xx(5)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)+sqrt(deltaquartiP_bbis)
+                        else		 
+                            xx(4)=xx(6)
+                            xx(5)=xx(6)
+                        endif
+                    endif
+                    
+                    do ii=2,6 !ordinamento dei punti con insertion sort
+                        app=xx(ii)       
+                        jj=ii-1
+                        do while (jj.ge.1)
+                            if (xx(jj).gt.app) then
+                                xx(jj+1)=xx(jj)
+                                jj=jj-1 
+                                xx(jj+1)=app
+                            else 
+                                exit
+                            endif
+                        enddo
+                    enddo                
+                    
+                    do ii=1,6 !taglio fuori i punti  minori di zero e maggiori di estremo_m_tilde(i,j)
+                        if(xx(ii).lt.0.d0) xx(ii)=0.d0                    
+                        if(xx(ii).gt.estremo_m_tilde(i)) xx(ii)=estremo_m_tilde(i)                    
+                    enddo
+                    
+                    DO ii=1,5
+                       if(xx(ii+1)-xx(ii).gt.1.d-14)then
+                            alfa=(xx(ii+1)-xx(ii))/2.d0
+                            beta=(xx(ii+1)+xx(ii))/2.d0
+                    
+                            iplog=1
+                            iqlog=1
+                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).le.estremo_m(j)) then
+                                iqlog=2
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).eq.estremo_m(j))) then
+                                iqlog=2         
+                            endif			
+                            
+                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).ge.0.d0)then
+                                iplog=2
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).eq.0.d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).eq.0.d0))then
+                                iplog=2
+                            endif
+                           
+                            xtrasl=alfa*x_d(ki)+beta
+                            A1=dmax1(0.d0,curva_piu_meno_gpu(xtrasl,flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j))
+                            B1=dmin1(estremo_m(j),curva_piu_meno_gpu(xtrasl,flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j))	             
+                            alfa_j1=(B1-A1)/2.d0
+                            beta_j1=(B1+A1)/2.d0                            
+                            p2a(ki,kj)=0.d0
+                             
+                            IF ((B1-A1).gt.10.d-14) THEN
+                                do index=0,3
+                                    val = blockDim%y*index
+                                    xinttrasl=(xint_d(kj+val)+1.d0)*0.5d0
+                                    s=fi1_d(iplog,iqlog,xinttrasl)
+                                    ds=dfi1_d(iplog,iqlog,xinttrasl)
+                                    serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
+                                    r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2
+                                    r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
+                                    r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv                            
+                                    p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cp_d)*sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1))                                    
+                                   
+                                    !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)
+                                    
+                                    IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN                                
+                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cp_d**2)*(dlog(cp_d*delta_x(delta_x_index)+sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))                            
+                                    ENDIF    
+                                   
+                                    !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)                                    
+                                enddo                          
+                            ENDIF
+                           
                             call syncthreads()
-                            if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+                            if(kj .le. 4) then
+                                !if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),p2a(ki,kj+4),kj
+                                p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)                                
+                            endif
                             call syncthreads()
-                            if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
-                            call syncthreads()
-                            if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+                            if(kj .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+2)
                             call syncthreads()
                             
-                            !if(ki .eq. 1) print *, p2a(ki,kj)+p2a(ki+1,kj)*alfa, blockIdx%x, blockIdx%y
-                            if(ki .eq. 1) finalValue = finalValue + (p2a(ki,kj)+p2a(ki+1,kj))*alfa
+                            if(kj .eq. 1) then                                
+                                p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tilde(i),grado_q_d)
+
+                                !if(ki.eq.16) print *,p2a(ki,kj), ki
+
+                                call syncthreads()				
+                                if(ki.le.16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
+                                call syncthreads()
+                                if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
+                                call syncthreads()
+                                if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
+                                call syncthreads()
+                                if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
+                                call syncthreads()
+                              
+                                !if(ki .eq. 1) print *, p2a(ki,kj)+p2a(ki+1,kj)*alfa, blockIdx%x, blockIdx%y
+                                if(ki .eq. 1) then
+                                    Vuextra(delta_x_index) = Vuextra(delta_x_index) + (p2a(ki,kj)+p2a(ki+1,kj))*alfa
+                                    !print *, "EP", (p2a(ki,kj)+p2a(ki+1,kj))*alfa, delta_x_index                                    
+                                endif
+                            endif
+                            
                         endif
-                    endif
-                enddo                
-            endif            
+                    enddo
+                endif
+            enddo
+
+            if(ki.eq.1 .and. kj.eq.1) then
+                !print *,VuExtra(1),Vuextra(2),Vuextra(3),Vuextra(4)
+                matrix_d(blockIdx%x,blockIdx%y) = -(1.d0/(8.d0*datan(1.d0)*rho_d))*(VuExtra(1)-Vuextra(2)-Vuextra(3)+Vuextra(4))
+            endif
         endif
+
+        
     end subroutine
 
     attributes(device) FUNCTION curva_piu_meno_gpu(x_linea,tipo_allineamento,segno,vel,delta_x, i, j) !!! per definire le rette dei domini in caso di elementi allineati (o eventualmete limiti delle ordinate)
