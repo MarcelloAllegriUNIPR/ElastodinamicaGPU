@@ -30,17 +30,29 @@ SUBROUTINE time2D_toeplitz_DP(i_time,file_output)
   
     hk=i_time-1
     hk_d = i_time-1
-    !grid = dim3(2*DimVu,2*DimVu,1)
-    grid = dim3(1,3,1)
+    grid = dim3(2*DimVu,2*DimVu,1)
+    !grid = dim3(1,3,1)
     tBlock = dim3(N_gauss,8,1)
     
     call Make_Vu_Blocco_DP<<<grid,tblock,(sizeof(var)*(N_gauss+1)*8)>>>(hk_d) !+sizeof(var)*5+sizeof(hk)*4
 
     matrix = matrix_d    
-    !print *, matrix(1,1:10)
+    !print *, matrix(150,1:10)
     !DEALLOCATE(Vu_d)
     !DEALLOCATE(matrix_d)
-
+    WRITE (i_time_st,fmt) i_time
+  
+  file_mat=TRIM(file_output) // '_matrice_' // TRIM(i_time_st)
+   CALL filepath(file_path_mat,dir,file_mat,ext)  
+     OPEN(i_time+6,FILE=TRIM(file_path_mat))
+        DO i=1,2*DimVu      
+          DO j=1,2*DimVu    
+             !print *, matrix(i,j),i,j 
+             !pause
+             WRITE(i_time+6,*) matrix(i,j),i,j 
+         END DO
+        END DO
+      CLOSE(i_time+6)
 RETURN
   
 END SUBROUTINE time2D_toeplitz_DP
