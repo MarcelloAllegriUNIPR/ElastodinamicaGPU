@@ -90,7 +90,7 @@ module data_utils
             list_elements_d(index,1:2) = list_elements(index)%nodes(1:2)
         enddo
 
-        do index=2, DimVu
+        do index=2, DimVu+1
             punto_m_2(index-1,1:2)=list_nodes(index)%coordinates(1:2)
             punto_m_tilde_2(index-1,1:2)=list_nodes(index)%coordinates(1:2)
         enddo

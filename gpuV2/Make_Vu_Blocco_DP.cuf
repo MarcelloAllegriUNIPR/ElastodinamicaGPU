@@ -134,6 +134,9 @@ module kernel_MakeVuBlocco
                             iplog=1                           
                             iqlog=1
 
+                            ! if(ki.eq.1 .and. kj .eq.1 .and.  &
+                            ! blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *,alfa,beta
+
                             if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).le.estremo_m(j)) then                    
                                 iqlog=2                    
                             elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)))then                    
@@ -153,7 +156,10 @@ module kernel_MakeVuBlocco
                             beta_j1=(B1+A1)/2.d0
                                                          
                             p2a(ki,kj) = 0.0d0
-                            call syncthreads()   
+                            call syncthreads()
+                            
+                            !if(ki.eq.16 .and. kj .eq. 1 .and. blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, punto_m_2(j,1),punto_m_1(j,1),estremo_m(j)
+
                             IF ((B1-A1).gt.10.d-14) THEN	                 
                                 do index=0,3
                                     val = blockDim%y*index                                
@@ -164,9 +170,11 @@ module kernel_MakeVuBlocco
                                     r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2                                    
                                     r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
                                     r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv
-                                    p2a(ki,kj)=p2a(ki,kj)-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))                               
+                                    p2a(ki,kj)=p2a(ki,kj)-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
                                     
-                                    ! if(ki.eq.16 .and. index.eq.0) print *,p2a(ki,kj),kj
+                                     !if(ki.eq.16 .and. index.eq.0 .and.  &
+                                     !blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *,CA(i,j),CB(i),xtrasl,CC(j),serv, kj+val
+                                     !-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
                                     
                                     IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN                                        
                                         p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cs_d**2)*(dlog(cs_d*delta_x(delta_x_index)+sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))
@@ -201,8 +209,8 @@ module kernel_MakeVuBlocco
                                     if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)                                
                                     call syncwarp(activemask())
                                     if(ki .eq. 1) then
-                                        VuExtra(delta_x_index) = (p2a(ki,kj)+p2a(ki+1,kj))*alfa                                
-                                        if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *, "ES", Vuextra(delta_x_index), delta_x_index!,activemask()                                 
+                                        VuExtra(delta_x_index) = VuExtra(delta_x_index)+(p2a(ki,kj)+p2a(ki+1,kj))*alfa                                
+                                        !if(blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, "ES", Vuextra(delta_x_index), delta_x_index!,activemask()                                 
                                     endif
                                 endif                            
                                 call syncthreads()
@@ -376,7 +384,7 @@ module kernel_MakeVuBlocco
                                             VuExtra(delta_x_index) = VuExtra(delta_x_index)+(p2a(ki,kj)+p2a(ki+1,kj))*alfa
                                         !     if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *,"b"
                                         ! endif
-                                        !if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *, "EP", (p2a(ki,kj)+p2a(ki+1,kj))*alfa, delta_x_index!, activemask()                                    
+                                        !if(blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, "EP", (p2a(ki,kj)+p2a(ki+1,kj))*alfa, delta_x_index!, activemask()                                    
                                     endif
                                 endif
                                 call syncthreads() 

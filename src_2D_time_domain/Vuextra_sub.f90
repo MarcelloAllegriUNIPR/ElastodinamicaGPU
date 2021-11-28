@@ -30,7 +30,7 @@ Double precision function Vuextra_sub(l_m_tilde,l_m,e_m_tilde,e_m,tempo1,tempo2,
   INTEGER(kind=4), DIMENSION(2,2) :: delta_kronecker
   REAL(kind=8), DIMENSION(6) :: xx
   REAL(kind=8), DIMENSION(2) :: r, punto_m_1, punto_m_2, punto_m_tilde_1, punto_m_tilde_2         
-  
+  double precision :: value
   !!!!!!!!!!!!!!!!!!!!!!!!!! CORPO della SUBROUTINE !!!!!!!!!!!!!!!!!!
   cs=velC_S
   cp=velC_P
@@ -89,6 +89,8 @@ IF (delta_x.le.0.d0) RETURN
   CE=(punto_m_tilde_2(2)-punto_m_tilde_1(2))/estremo_m_tilde
   CF=(punto_m_2(2)-punto_m_1(2))/estremo_m
 
+  !print *,punto_m_2(1),punto_m_1(1),estremo_m
+  !pause
   CBCFCECC=CB*CF-CE*CC
   CFCACCCD=CF*CA-CC*CD
   CBCDCECA=CB*CD-CE*CA
@@ -196,6 +198,7 @@ IF (delta_x.le.0.d0) RETURN
          if(xx(ii+1)-xx(ii).gt.1.d-14)then		 
 			 alfa=(xx(ii+1)-xx(ii))/2.d0
 	         beta=(xx(ii+1)+xx(ii))/2.d0
+             !print *, alfa,beta
 	
              p2 = 0.d0
 	 
@@ -247,7 +250,7 @@ IF (delta_x.le.0.d0) RETURN
 						 r(2)=CD+CE*xtrasl-CF*serv
 
 	                     p2a = p2a - wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cs)*sqrt(dabs((cs*delta_x)**2-r2_1))
-						 
+						 !if (ki.eq.16) print *, CA,CB,xtrasl,CC,serv
 						 !p2a = p2a - wint(kj)*ds*fiU(l_m,serv,estremo_m,grado_q)*(r(indice_i)*r(indice_j)/(r2_1**2)-coeff_delta_kronecker/r2_1)*(delta_x/cs)*sqrt((cs*delta_x)**2-r2_1)
 						 
 						 !p2a = sqrt((cs*delta_x)**2-r2_1)!!!!!!!!!!!! (non giusto)
