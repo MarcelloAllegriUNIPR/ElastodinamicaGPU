@@ -2,7 +2,7 @@ MODULE variable_2Dgeneral
     
     use cudafor
     !-- gpu --
-    integer :: useGpu = 0
+    integer :: useGpu = 1
 
     !!! FILE !!!
     CHARACTER(len=200)::  dir, ext

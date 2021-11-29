@@ -7,7 +7,7 @@ module kernel_MakeVuBlocco
 
     attributes(global) subroutine Make_Vu_Blocco_DP(hk)
         integer, intent(in) :: hk        
-        integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index
+        integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index, end
         double precision, shared, dimension(blockDim%x+1, blockDim%y) :: p2a
         double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, delta_x(4), &
                             xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, &
@@ -161,7 +161,7 @@ module kernel_MakeVuBlocco
                             !if(ki.eq.16 .and. kj .eq. 1 .and. blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, punto_m_2(j,1),punto_m_1(j,1),estremo_m(j)
 
                             IF ((B1-A1).gt.10.d-14) THEN	                 
-                                do index=0,3
+                                do index=0,(NGauss_d/blockDim%y)-1
                                     val = blockDim%y*index                                
                                     xinttrasl=(xint_d(kj+val)+1.d0)*0.5d0                                    
                                     s=fi1_d(iplog,iqlog,xinttrasl)                                    
@@ -325,7 +325,7 @@ module kernel_MakeVuBlocco
                             p2a(ki,kj)=0.0d0
                             call syncthreads()
                             IF ((B1-A1).gt.10.d-14) THEN
-                                do index=0,3
+                                do index=0,(NGauss_d/blockDim%y)-1
                                     val = blockDim%y*index
                                     xinttrasl=(xint_d(kj+val)+1.d0)*0.5d0
                                     s=fi1_d(iplog,iqlog,xinttrasl)

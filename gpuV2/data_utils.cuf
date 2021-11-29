@@ -72,6 +72,8 @@ module data_utils
         ALLOCATE(list_elements_d(2*DimVu,2),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
 
+        NGauss_d = Ngauss
+
 	end subroutine allocateCommonVariables
 
     attributes(host) subroutine copyCommonData()
