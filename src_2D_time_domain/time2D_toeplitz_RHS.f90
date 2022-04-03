@@ -35,7 +35,7 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   ind_gauss = 6
 
   if (useGpu .eq. 0) then
-    dir='./../tests/output/cpu'
+    dir='./../tests/output/cpu'    
   else
     dir='./../tests/output/gpu'
     
@@ -49,12 +49,16 @@ SUBROUTINE time2D_toeplitz_RHS(file_output)
   
 
 START = omp_get_wtime()
-if(useGpu .eq. 0) then
-  DO i_time=250,250
+if(useGpu .eq. 0) then  
+  !$omp parallel  
+  !$omp do private(i_time)
+  DO i_time=1,Nt
     CALL time2D_toeplitz(i_time,file_output);
-  end do
+  end do  
+  !$omp end do
+  !$omp end parallel 
 else
-   DO i_time=250,250
+   DO i_time=1,Nt
     CALL time2D_toeplitz_DP(i_time,file_output);       
    end do
 endif

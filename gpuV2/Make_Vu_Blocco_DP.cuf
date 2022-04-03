@@ -182,11 +182,21 @@ module kernel_MakeVuBlocco
                                     
                                 END DO                            
 
+                                if(blockDim%y .ge. 32) then
+                                    call syncthreads()
+                                    if(kj .le. 16) then                                     
+                                        p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)                                    
+                                    endif                                    
+                                endif
+                                if(blockDim%y .ge. 16) then
+                                    call syncthreads()
+                                    if(kj .le. 8) then                                     
+                                        p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)                                    
+                                    endif
+                                endif
                                 call syncthreads()
-                                if(kj .le. 4) then 
-                                    !if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),p2a(ki,kj+4),kj
-                                    p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)
-                                    ! if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),kj
+                                if(kj .le. 4) then                                     
+                                    p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+4)                                    
                                 endif
                                 call syncthreads()  
                                     
@@ -345,7 +355,19 @@ module kernel_MakeVuBlocco
                                     !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)                                    
                                 enddo                          
                                                       
-                            
+                                if(blockDim%y .ge. 32) then
+                                    call syncthreads()
+                                    if(kj .le. 16) then                                     
+                                        p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+16)                                    
+                                    endif                                    
+                                endif
+                                if(blockDim%y .ge. 16) then
+                                    call syncthreads()
+                                    if(kj .le. 8) then                                     
+                                        p2a(ki,kj) = p2a(ki,kj)+p2a(ki,kj+8)                                    
+                                    endif
+                                endif
+
                                 call syncthreads()
                                 if(kj .le. 4) then
                                     !if(delta_x_index .eq. 2 .and. ki .eq. 16) print *, p2a(ki,kj),p2a(ki,kj+4),kj
