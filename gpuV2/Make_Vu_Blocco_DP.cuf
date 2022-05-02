@@ -10,10 +10,11 @@ module kernel
     attributes(global) subroutine Make_Vu_Blocco_DP(hk)
         integer, intent(in) :: hk        
         integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index, end
-        double precision, shared :: p2a(blockDim%x+1, blockDim%y), VuExtra(4)
+        double precision, shared :: p2a(blockDim%x+1, blockDim%y), VuExtra(4), CBCDCECAShared, CFCACCCDShared, CBCFCECCShared, CBCCCECFShared, &
+                                    CACCCFCDShared, CACBCDCEShared, CAShared, CDShared, CBShared, CEShared, CCShared, CFShared, estremo_m_tildeShared, estremo_mShared
+        integer, shared :: flag_extraShared
         double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, deltaquartis_bbis, deltaquartip_bbis, delta_x(4), &
-                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, &
-                            ds, serv, r2_1, r(2) 
+                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, ds, serv, r2_1, r(2) 
 
         
         i=blockIdx%x
@@ -41,6 +42,30 @@ module kernel
         delta_x(3) = (hk+1)*delta_t_d
         delta_x(4) = ((hk+1)*delta_t_d)-delta_t_d
 
+        if(ki.eq.1 .and. kj.eq.1) then
+            CBCDCECAShared = CBCDCECA(i,j)
+            CFCACCCDShared = CFCACCCD(i,j)
+            CBCFCECCShared = CBCFCECC(i,j)
+            CBCCCECFShared = CBCCCECF(i,j)
+            CACCCFCDShared = CACCCFCD(i,j)
+            CACBCDCEShared = CACBCDCE(i,j)
+
+            flag_extraShared = flag_extra(i,j)
+
+            CAShared = CA(i,j)
+            CDShared = CD(i,j)
+
+            CBShared = CB(i)
+            CEShared = CE(i)
+            estremo_m_tildeShared = estremo_m_tilde(i)
+
+            CCShared = CC(j)
+            CFShared = CF(j)
+            estremo_mShared = estremo_m(j)
+        endif
+
+        call syncthreads()
+
         !if(i.eq.1 .and. j.eq.3 .and. ki.eq.1 .and. kj.eq.1) print *, "passed"
         if((i .ne. j) .and. &
             (list_elements_d(i,1).ne.list_elements_d(j,2)) .and. &
@@ -50,58 +75,58 @@ module kernel
             do delta_x_index=1,4
                 !delta_x_index=2
                 
-                deltaquartiS=(cs_d*delta_x(delta_x_index))**2-CFCACCCD(i,j)**2        
-                deltaquartiS_bis=(cs_d*delta_x(delta_x_index))**2-CBCDCECA(i,j)**2        
-                deltaquartiS_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cs_d*delta_x(delta_x_index))**2                
+                deltaquartiS=(cs_d*delta_x(delta_x_index))**2-CFCACCCDShared**2        
+                deltaquartiS_bis=(cs_d*delta_x(delta_x_index))**2-CBCDCECAShared**2        
+                deltaquartiS_bbis=-(CBCDCECAShared)**2-estremo_mShared**2*(CBCFCECCShared)**2+2*estremo_mShared*CBCDCECAShared*CBCFCECCShared+(cs_d*delta_x(delta_x_index))**2                
                 
                 ! INTEGRAZIONE su ES
-                IF((CBCFCECC(i,j).ne.0.0d0).or.(deltaquartiS.ge.0.0d0)) then
-                    if(flag_extra(i,j).eq.1) then
-                        if(CBCCCECF(i,j).lt.0.0d0)then                        
-                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index)                            
-                            xx(4)=-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index)                            
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index))                            
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index))                            
+                IF((CBCFCECCShared.ne.0.0d0).or.(deltaquartiS.ge.0.0d0)) then
+                    if(flag_extraShared.eq.1) then
+                        if(CBCCCECFShared.lt.0.0d0)then                        
+                            xx(1)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cs_d*delta_x(delta_x_index)                            
+                            xx(4)=-CACBCDCEShared+cs_d*delta_x(delta_x_index)                            
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cs_d*delta_x(delta_x_index),-CACBCDCEShared-cs_d*delta_x(delta_x_index))                            
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cs_d*delta_x(delta_x_index),-CACBCDCEShared-cs_d*delta_x(delta_x_index))                            
                             xx(5)=xx(4)                            
                             xx(6)=xx(4)                        
                         else                    
-                            xx(1)=-CACBCDCE(i,j)-cs_d*delta_x(delta_x_index)                    
-                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cs_d*delta_x(delta_x_index)                    
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index))                    
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cs_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cs_d*delta_x(delta_x_index))                    
+                            xx(1)=-CACBCDCEShared-cs_d*delta_x(delta_x_index)                    
+                            xx(4)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cs_d*delta_x(delta_x_index)                    
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cs_d*delta_x(delta_x_index),-CACBCDCEShared+cs_d*delta_x(delta_x_index))                    
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cs_d*delta_x(delta_x_index),-CACBCDCEShared+cs_d*delta_x(delta_x_index))                    
                             xx(5)=xx(4)                    
                             xx(6)=xx(4)                    
                         endif
-                    elseif(flag_extra(i,j).eq.2) then
-                        if(CBCCCECF(i,j).lt.0.0d0)then                    
-                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis)                    
-                            xx(4)=-CACBCDCE(i,j)+sqrt(deltaquartiS_bis)                    
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis),-CACBCDCE(i,j)-sqrt(deltaquartiS_bis))                    
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis),-CACBCDCE(i,j)-sqrt(deltaquartiS_bis))                    
+                    elseif(flag_extraShared.eq.2) then
+                        if(CBCCCECFShared.lt.0.0d0)then                    
+                            xx(1)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiS_bis)                    
+                            xx(4)=-CACBCDCEShared+sqrt(deltaquartiS_bis)                    
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiS_bis),-CACBCDCEShared-sqrt(deltaquartiS_bis))                    
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiS_bis),-CACBCDCEShared-sqrt(deltaquartiS_bis))                    
                             xx(5)=xx(4)                    
                             xx(6)=xx(4)                    
                         else                    
-                            xx(1)=-CACBCDCE(i,j)-sqrt(deltaquartiS_bis)                    
-                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiS_bis)
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis),-CACBCDCE(i,j)+sqrt(deltaquartiS_bis))                    
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiS_bis),-CACBCDCE(i,j)+sqrt(deltaquartiS_bis))                    
+                            xx(1)=-CACBCDCEShared-sqrt(deltaquartiS_bis)                    
+                            xx(4)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiS_bis)
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiS_bis),-CACBCDCEShared+sqrt(deltaquartiS_bis))                    
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiS_bis),-CACBCDCEShared+sqrt(deltaquartiS_bis))                    
                             xx(5)=xx(4)
                             xx(6)=xx(4)                        
                         endif
-                    elseif(flag_extra(i,j).eq.3) then
-                        xx(1)=dmin1((CFCACCCD(i,j)-cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))                    
-                        xx(6)=dmax1((CFCACCCD(i,j)-cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
+                    elseif(flag_extraShared.eq.3) then
+                        xx(1)=dmin1((CFCACCCDShared-cs_d*delta_x(delta_x_index))/(-CBCFCECCShared),(CFCACCCDShared+cs_d*delta_x(delta_x_index))/(-CBCFCECCShared))                    
+                        xx(6)=dmax1((CFCACCCDShared-cs_d*delta_x(delta_x_index))/(-CBCFCECCShared),(CFCACCCDShared+cs_d*delta_x(delta_x_index))/(-CBCFCECCShared))
                     
                         if(deltaquartiS_bis.ge.0.0d0)then
-                            xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiS_bis)                    
-                            xx(3)=-(CACBCDCE(i,j))+sqrt(deltaquartiS_bis)                    
+                            xx(2)=-(CACBCDCEShared)-sqrt(deltaquartiS_bis)                    
+                            xx(3)=-(CACBCDCEShared)+sqrt(deltaquartiS_bis)                    
                         else                    
                             xx(2)=xx(1)                    
                             xx(3)=xx(1)                    
                         endif                    
                         if(deltaquartiS_bbis.ge.0.0d0)then                    
-                            xx(4)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)-sqrt(deltaquartiS_bbis)                    
-                            xx(5)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)+sqrt(deltaquartiS_bbis)                    
+                            xx(4)=-(CACBCDCEShared)+estremo_mShared*CBCCCECFShared-sqrt(deltaquartiS_bbis)                    
+                            xx(5)=-(CACBCDCEShared)+estremo_mShared*CBCCCECFShared+sqrt(deltaquartiS_bbis)                    
                         else                    
                             xx(4)=xx(6)                    
                             xx(5)=xx(6)                    
@@ -124,7 +149,7 @@ module kernel
                     
                     do ii=1,6!!!!!!!!!!!!!!!!!taglio fuori i punti  minori di zero e maggiori di estremo_m_tilde                    
                         if(xx(ii).lt.0.0d0) xx(ii)=0.0d0                    
-                        if(xx(ii).gt.estremo_m_tilde(i)) xx(ii)=estremo_m_tilde(i)                                    
+                        if(xx(ii).gt.estremo_m_tildeShared) xx(ii)=estremo_m_tildeShared                                    
                     enddo                
                         
                     DO ii=1,5
@@ -139,28 +164,28 @@ module kernel
                             ! if(ki.eq.1 .and. kj .eq.1 .and.  &
                             ! blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *,alfa,beta
 
-                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).le.estremo_m(j)) then                    
+                            if(curva_piu_meno_gpu(beta,flag_extraShared,1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).le.estremo_mShared) then                    
                                 iqlog=2                    
-                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)))then                    
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extraShared,1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.estremo_mShared).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extraShared,1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.estremo_mShared))then                    
                                 iqlog=2                    
                             endif          
                             
-                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).ge.0.0d0)then
+                            if(curva_piu_meno_gpu(beta,flag_extraShared,-1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).ge.0.0d0)then
                                 iplog=2
-                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).eq.0.0d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j).eq.0.0d0))then
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extraShared,-1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.0.0d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extraShared,-1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.0.0d0))then
                                 iplog=2
                             endif
                             
                             xtrasl=alfa*x_d(ki)+beta
-                            A1=dmax1(0.0d0,curva_piu_meno_gpu(xtrasl,flag_extra(i,j),-1,cs_d,delta_x(delta_x_index),i,j))
-                            B1=dmin1(estremo_m(j),curva_piu_meno_gpu(xtrasl,flag_extra(i,j),1,cs_d,delta_x(delta_x_index),i,j))
+                            A1=dmax1(0.0d0,curva_piu_meno_gpu(xtrasl,flag_extraShared,-1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared))
+                            B1=dmin1(estremo_mShared,curva_piu_meno_gpu(xtrasl,flag_extraShared,1,cs_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared))
                             alfa_j1=(B1-A1)/2.d0
                             beta_j1=(B1+A1)/2.d0
                                                          
                             p2a(ki,kj) = 0.0d0
                             call syncthreads()
                             
-                            !if(ki.eq.16 .and. kj .eq. 1 .and. blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, punto_m_2(j,1),punto_m_1(j,1),estremo_m(j)
+                            !if(ki.eq.16 .and. kj .eq. 1 .and. blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, punto_m_2(j,1),punto_m_1(j,1),estremo_mShared
 
                             IF ((B1-A1).gt.10.d-14) THEN	                 
                                 do index=0,(NGauss_d/blockDim%y)-1
@@ -169,17 +194,17 @@ module kernel
                                     s=fi1_d(iplog,iqlog,xinttrasl)                                    
                                     ds=dfi1_d(iplog,iqlog,xinttrasl)                                    
                                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                                    r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2                                    
-                                    r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
-                                    r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv
-                                    p2a(ki,kj)=p2a(ki,kj)-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
+                                    r2_1=(CAShared+CBShared*xtrasl-CCShared*serv)**2+(CDShared+CEShared*xtrasl-CFShared*serv)**2                                    
+                                    r(1)=CAShared+CBShared*xtrasl-CCShared*serv
+                                    r(2)=CDShared+CEShared*xtrasl-CFShared*serv
+                                    p2a(ki,kj)=p2a(ki,kj)-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_mShared,grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
                                     
                                      !if(ki.eq.16 .and. index.eq.0 .and.  &
-                                     !blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *,CA(i,j),CB(i),xtrasl,CC(j),serv, kj+val
-                                     !-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
+                                     !blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *,CAShared,CBShared,xtrasl,CCShared,serv, kj+val
+                                     !-wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_mShared,grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cs_d)*sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1))
                                     
                                     IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN                                        
-                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cs_d**2)*(dlog(cs_d*delta_x(delta_x_index)+sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))
+                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_mShared,grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cs_d**2)*(dlog(cs_d*delta_x(delta_x_index)+sqrt(dabs((cs_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))
                                     endif
                                     
                                 END DO                            
@@ -210,7 +235,7 @@ module kernel
                                 call syncthreads()
                                 if(kj .eq. 1) then
                                         
-                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tilde(i),grado_q_d)                                
+                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)                                
                                     call syncwarp(activemask())
                                     if(ki .le. 16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
                                     call syncwarp(activemask())
@@ -232,57 +257,57 @@ module kernel
                     END DO
                 endif            
             
-                deltaquartiP=(cp_d*delta_x(delta_x_index))**2-CFCACCCD(i,j)**2
-                deltaquartiP_bis=(cp_d*delta_x(delta_x_index))**2-CBCDCECA(i,j)**2
-                deltaquartiP_bbis=-(CBCDCECA(i,j))**2-estremo_m(j)**2*(CBCFCECC(i,j))**2+2*estremo_m(j)*CBCDCECA(i,j)*CBCFCECC(i,j)+(cp_d*delta_x(delta_x_index))**2
+                deltaquartiP=(cp_d*delta_x(delta_x_index))**2-CFCACCCDShared**2
+                deltaquartiP_bis=(cp_d*delta_x(delta_x_index))**2-CBCDCECAShared**2
+                deltaquartiP_bbis=-(CBCDCECAShared)**2-estremo_mShared**2*(CBCFCECCShared)**2+2*estremo_mShared*CBCDCECAShared*CBCFCECCShared+(cp_d*delta_x(delta_x_index))**2
                 
                 ! INTEGRAZIONE su EP
-                if((CBCFCECC(i,j).ne.0.0d0).or.(deltaquartiP.ge.0.0d0)) then                    
-                    if(flag_extra(i,j) .eq. 1) then
-                        if(CBCCCECF(i,j).lt.0.0d0)then
-                             xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index)
-                            xx(4)=-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index)
-                             xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index))
-                             xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index))
+                if((CBCFCECCShared.ne.0.0d0).or.(deltaquartiP.ge.0.0d0)) then                    
+                    if(flag_extraShared .eq. 1) then
+                        if(CBCCCECFShared.lt.0.0d0)then
+                             xx(1)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cp_d*delta_x(delta_x_index)
+                            xx(4)=-CACBCDCEShared+cp_d*delta_x(delta_x_index)
+                             xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cp_d*delta_x(delta_x_index),-CACBCDCEShared-cp_d*delta_x(delta_x_index))
+                             xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cp_d*delta_x(delta_x_index),-CACBCDCEShared-cp_d*delta_x(delta_x_index))
                              xx(5)=xx(4)
                              xx(6)=xx(4)
                          else
-                             xx(1)=-CACBCDCE(i,j)-cp_d*delta_x(delta_x_index)
-                             xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+cp_d*delta_x(delta_x_index)
-                             xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index))
-                             xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-cp_d*delta_x(delta_x_index),-CACBCDCE(i,j)+cp_d*delta_x(delta_x_index))       
+                             xx(1)=-CACBCDCEShared-cp_d*delta_x(delta_x_index)
+                             xx(4)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+cp_d*delta_x(delta_x_index)
+                             xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cp_d*delta_x(delta_x_index),-CACBCDCEShared+cp_d*delta_x(delta_x_index))
+                             xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-cp_d*delta_x(delta_x_index),-CACBCDCEShared+cp_d*delta_x(delta_x_index))       
                              xx(5)=xx(4)
                              xx(6)=xx(4)
                          endif                
-                    elseif(flag_extra(i,j) .eq. 2) then
-                        if(CBCCCECF(i,j).lt.0.0d0)then
-                            xx(1)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis)
-                            xx(4)=-CACBCDCE(i,j)+sqrt(deltaquartiP_bis)
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis),-CACBCDCE(i,j)-sqrt(deltaquartiP_bis))
+                    elseif(flag_extraShared .eq. 2) then
+                        if(CBCCCECFShared.lt.0.0d0)then
+                            xx(1)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiP_bis)
+                            xx(4)=-CACBCDCEShared+sqrt(deltaquartiP_bis)
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiP_bis),-CACBCDCEShared-sqrt(deltaquartiP_bis))
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiP_bis),-CACBCDCEShared-sqrt(deltaquartiP_bis))
                             xx(5)=xx(4)
                             xx(6)=xx(4)
                         else
-                            xx(1)=-CACBCDCE(i,j)-sqrt(deltaquartiP_bis)
-                            xx(4)=-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))+sqrt(deltaquartiP_bis)
-                            xx(2)=dmin1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
-                            xx(3)=dmax1(-CACBCDCE(i,j)+estremo_m(j)*(CBCCCECF(i,j))-sqrt(deltaquartiP_bis),-CACBCDCE(i,j)+sqrt(deltaquartiP_bis))
+                            xx(1)=-CACBCDCEShared-sqrt(deltaquartiP_bis)
+                            xx(4)=-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)+sqrt(deltaquartiP_bis)
+                            xx(2)=dmin1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiP_bis),-CACBCDCEShared+sqrt(deltaquartiP_bis))
+                            xx(3)=dmax1(-CACBCDCEShared+estremo_mShared*(CBCCCECFShared)-sqrt(deltaquartiP_bis),-CACBCDCEShared+sqrt(deltaquartiP_bis))
                             xx(5)=xx(4)
                             xx(6)=xx(4)				 
                         endif
-                    elseif(flag_extra(i,j) .eq. 3) then
-                        xx(1)=dmin1((CFCACCCD(i,j)-cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
-                        xx(6)=dmax1((CFCACCCD(i,j)-cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cp_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
+                    elseif(flag_extraShared .eq. 3) then
+                        xx(1)=dmin1((CFCACCCDShared-cp_d*delta_x(delta_x_index))/(-CBCFCECCShared),(CFCACCCDShared+cp_d*delta_x(delta_x_index))/(-CBCFCECCShared))
+                        xx(6)=dmax1((CFCACCCDShared-cp_d*delta_x(delta_x_index))/(-CBCFCECCShared),(CFCACCCDShared+cp_d*delta_x(delta_x_index))/(-CBCFCECCShared))
                         if(deltaquartiP_bis.ge.0.0d0)then
-                            xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiP_bis)
-                            xx(3)=-(CACBCDCE(i,j))+sqrt(deltaquartiP_bis)
+                            xx(2)=-(CACBCDCEShared)-sqrt(deltaquartiP_bis)
+                            xx(3)=-(CACBCDCEShared)+sqrt(deltaquartiP_bis)
                         else		 
                             xx(2)=xx(1)
                             xx(3)=xx(1)
                         endif
                         if(deltaquartiP_bbis.ge.0.0d0)then
-                            xx(4)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)-sqrt(deltaquartiP_bbis)
-                            xx(5)=-(CACBCDCE(i,j))+estremo_m(j)*CBCCCECF(i,j)+sqrt(deltaquartiP_bbis)
+                            xx(4)=-(CACBCDCEShared)+estremo_mShared*CBCCCECFShared-sqrt(deltaquartiP_bbis)
+                            xx(5)=-(CACBCDCEShared)+estremo_mShared*CBCCCECFShared+sqrt(deltaquartiP_bbis)
                         else		 
                             xx(4)=xx(6)
                             xx(5)=xx(6)
@@ -305,7 +330,7 @@ module kernel
                     
                     do ii=1,6 !taglio fuori i punti  minori di zero e maggiori di estremo_m_tilde(i,j)
                         if(xx(ii).lt.0.0d0) xx(ii)=0.0d0                    
-                        if(xx(ii).gt.estremo_m_tilde(i)) xx(ii)=estremo_m_tilde(i)                    
+                        if(xx(ii).gt.estremo_m_tildeShared) xx(ii)=estremo_m_tildeShared                    
                     enddo
                     
                     DO ii=1,5
@@ -316,21 +341,21 @@ module kernel
                     
                             iplog=1
                             iqlog=1
-                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).le.estremo_m(j)) then
+                            if(curva_piu_meno_gpu(beta,flag_extraShared,1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).le.estremo_mShared) then
                                 iqlog=2
-                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).eq.estremo_m(j)).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j).eq.estremo_m(j))) then
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extraShared,1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.estremo_mShared).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extraShared,1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.estremo_mShared)) then
                                 iqlog=2         
                             endif			
                             
-                            if(curva_piu_meno_gpu(beta,flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).ge.0.0d0)then
+                            if(curva_piu_meno_gpu(beta,flag_extraShared,-1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).ge.0.0d0)then
                                 iplog=2
-                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).eq.0.0d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j).eq.0.0d0))then
+                            elseif((curva_piu_meno_gpu(x_d(ii),flag_extraShared,-1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.0.0d0).or.(curva_piu_meno_gpu(x_d(ii+1),flag_extraShared,-1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared).eq.0.0d0))then
                                 iplog=2
                             endif
                            
                             xtrasl=alfa*x_d(ki)+beta
-                            A1=dmax1(0.0d0,curva_piu_meno_gpu(xtrasl,flag_extra(i,j),-1,cp_d,delta_x(delta_x_index),i,j))
-                            B1=dmin1(estremo_m(j),curva_piu_meno_gpu(xtrasl,flag_extra(i,j),1,cp_d,delta_x(delta_x_index),i,j))	             
+                            A1=dmax1(0.0d0,curva_piu_meno_gpu(xtrasl,flag_extraShared,-1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared))
+                            B1=dmin1(estremo_mShared,curva_piu_meno_gpu(xtrasl,flag_extraShared,1,cp_d,delta_x(delta_x_index),i,j,CBCCCECFShared, CACCCFCDShared, CFCACCCDShared, CBCFCECCShared))	             
                             alfa_j1=(B1-A1)/2.d0
                             beta_j1=(B1+A1)/2.d0
                                     
@@ -343,15 +368,15 @@ module kernel
                                     s=fi1_d(iplog,iqlog,xinttrasl)
                                     ds=dfi1_d(iplog,iqlog,xinttrasl)
                                     serv=alfa_j1*(2.d0*s-1.d0)+beta_j1
-                                    r2_1=(CA(i,j)+CB(i)*xtrasl-CC(j)*serv)**2+(CD(i,j)+CE(i)*xtrasl-CF(j)*serv)**2
-                                    r(1)=CA(i,j)+CB(i)*xtrasl-CC(j)*serv
-                                    r(2)=CD(i,j)+CE(i)*xtrasl-CF(j)*serv                            
-                                    p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cp_d)*sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1))                                    
+                                    r2_1=(CAShared+CBShared*xtrasl-CCShared*serv)**2+(CDShared+CEShared*xtrasl-CFShared*serv)**2
+                                    r(1)=CAShared+CBShared*xtrasl-CCShared*serv
+                                    r(2)=CDShared+CEShared*xtrasl-CFShared*serv                            
+                                    p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_mShared,grado_q_d)*(r(indice_i)*r(indice_j)/(r2_1**2)-(delta_kronecker_d(indice_i,indice_j)/2.d0)/r2_1)*(delta_x(delta_x_index)/cp_d)*sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1))                                    
                                    
                                     !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)
                                     
                                     IF (delta_kronecker_d(indice_i,indice_j).eq.1.d0) THEN                                
-                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_m(j),grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cp_d**2)*(dlog(cp_d*delta_x(delta_x_index)+sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))                            
+                                        p2a(ki,kj)=p2a(ki,kj)+wint_d(kj+val)*ds*fiU_gpu(l_m,serv,estremo_mShared,grado_q_d)*(delta_kronecker_d(indice_i,indice_j)/2.d0)*(1/cp_d**2)*(dlog(cp_d*delta_x(delta_x_index)+sqrt(dabs((cp_d*delta_x(delta_x_index))**2-r2_1)))-dlog(sqrt(r2_1)))                            
                                     ENDIF    
                                    
                                     !if(ki.eq.16 .and. index.eq.0) print *, kj+val, p2a(ki,kj)                                    
@@ -384,7 +409,7 @@ module kernel
                                 call syncthreads()
                                 if(kj .eq. 1) then
                                     
-                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tilde(i),grado_q_d)
+                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)
                                     !if(delta_x_index .eq. 1) print *, p2a(ki,kj),ki
                                     !if(ki.eq.1) print *, ()
                                     call syncwarp(activemask())
@@ -430,16 +455,18 @@ module kernel
         
     end subroutine
 
-    attributes(device) FUNCTION curva_piu_meno_gpu(x_linea,tipo_allineamento,segno,vel,delta_x, i, j) !!! per definire le rette dei domini in caso di elementi allineati (o eventualmete limiti delle ordinate)
+    attributes(device) FUNCTION curva_piu_meno_gpu(x_linea,tipo_allineamento,segno,vel,delta_x, i, j, CBCCCECFSh, CACCCFCDSh, CFCACCCDSh, CBCFCECCSh) !!! per definire le rette dei domini in caso di elementi allineati (o eventualmete limiti delle ordinate)
 		REAL(kind=8) :: curva_piu_meno_gpu, x_linea, vel, delta_x
 		INTEGER(kind=4) :: tipo_allineamento, segno, i, j
+        double precision :: CBCCCECFSh, CACCCFCDSh, CFCACCCDSh, CBCFCECCSh
+
 		select case (tipo_allineamento)
 		   case (1)!!!!!allineati
-			curva_piu_meno_gpu=CBCCCECF(i,j)*x_linea+CACCCFCD(i,j)+sign(1,segno)*vel*delta_x
+			curva_piu_meno_gpu=CBCCCECFSh*x_linea+CACCCFCDSh+sign(1,segno)*vel*delta_x
 		   case (2)!!!!!paralleli
-			curva_piu_meno_gpu=CBCCCECF(i,j)*x_linea+CACCCFCD(i,j)+sign(1,segno)*sqrt(dabs((vel*delta_x)**2-(CFCACCCD(i,j))**2))
+			curva_piu_meno_gpu=CBCCCECFSh*x_linea+CACCCFCDSh+sign(1,segno)*sqrt(dabs((vel*delta_x)**2-(CFCACCCDSh)**2))
 		   case (3)!!!!!generici
-			curva_piu_meno_gpu=CBCCCECF(i,j)*x_linea+CACCCFCD(i,j)+sign(1,segno)*sqrt(dabs(-(CBCFCECC(i,j)*x_linea)**2+2*CBCFCECC(i,j)*(-CFCACCCD(i,j))*x_linea-(CFCACCCD(i,j))**2+vel**2*delta_x**2))
+			curva_piu_meno_gpu=CBCCCECFSh*x_linea+CACCCFCDSh+sign(1,segno)*sqrt(dabs(-(CBCFCECCSh*x_linea)**2+2*CBCFCECCSh*(-CFCACCCDSh)*x_linea-(CFCACCCDSh)**2+vel**2*delta_x**2))
 		end select
 	END FUNCTION curva_piu_meno_gpu
 end module kernel

@@ -58,7 +58,7 @@ if(useGpu .eq. 0) then
   !$omp end do
   !$omp end parallel 
 else
-   DO i_time=1,Nt
+   DO i_time=400,Nt
     CALL time2D_toeplitz_DP(i_time,file_output);       
    end do
 endif

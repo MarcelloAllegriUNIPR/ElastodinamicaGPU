@@ -31,8 +31,8 @@ SUBROUTINE time2D_toeplitz_DP(i_time,file_output)
   
     hk=i_time-1
     hk_d = i_time-1
-    grid = dim3(2*DimVu,2*DimVu,1)
-    !grid = dim3(1,3,1)
+    !grid = dim3(2*DimVu,2*DimVu,1)
+    grid = dim3(1,DimVu,1)
     tBlock = dim3(N_gauss,N_gauss/4,1)
     
     sizeofShMem = sizeof(var)*(N_gauss+1)*N_gauss/4
