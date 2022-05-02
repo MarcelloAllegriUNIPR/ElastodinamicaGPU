@@ -11,14 +11,14 @@ module data_utils
         integer, intent(in) :: DimVu, Ngauss
         integer :: AllocateStatus  
 		
-        ALLOCATE(x_d(NGauss),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(w_d(NGauss),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(xint_d(NGauss),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(wint_d(NGauss),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(x_d(NGauss),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(w_d(NGauss),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(xint_d(NGauss),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(wint_d(NGauss),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
 
         ALLOCATE(punto_m_1(DimVu,2),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
@@ -41,10 +41,10 @@ module data_utils
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
         ALLOCATE(CF(DimVu),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(IsULeftAssI(DimVu),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(IsULeftAssJ(DimVu),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(IsULeftAssI(DimVu),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(IsULeftAssJ(DimVu),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
 
         ALLOCATE(CA(DimVu,DimVu),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
@@ -64,8 +64,8 @@ module data_utils
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
         ALLOCATE(flag_extra(DimVu,DimVu),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
-        ALLOCATE(Vu_d(DimVu,DimVu),STAT=AllocateStatus)
-        IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
+        ! ALLOCATE(Vu_d(DimVu,DimVu),STAT=AllocateStatus)
+        ! IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"
 
         ALLOCATE(matrix_d(2*DimVu,2*DimVu),STAT=AllocateStatus)
         IF (AllocateStatus /= 0) STOP "*** Not enough memory ***"

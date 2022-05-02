@@ -1,17 +1,19 @@
-module kernel_MakeVuBlocco
+module kernel
 
     use Variables_DP
     use VuExtraGpu
     use Gauss_Gpu
+
+    implicit none
     contains
 
     attributes(global) subroutine Make_Vu_Blocco_DP(hk)
         integer, intent(in) :: hk        
         integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index, end
-        double precision, shared, dimension(blockDim%x+1, blockDim%y) :: p2a
-        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, delta_x(4), &
+        double precision, shared :: p2a(blockDim%x+1, blockDim%y), VuExtra(4)
+        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, deltaquartis_bbis, deltaquartip_bbis, delta_x(4), &
                             xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, &
-                            ds, serv, r2_1, r(2), VuExtra(4)
+                            ds, serv, r2_1, r(2) 
 
         
         i=blockIdx%x
@@ -87,8 +89,8 @@ module kernel_MakeVuBlocco
                             xx(6)=xx(4)                        
                         endif
                     elseif(flag_extra(i,j).eq.3) then
-                        xx(1)=dmin1((CFCACCCD_vuextra-cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra),(CFCACCCD_vuextra+cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra))                    
-                        xx(6)=dmax1((CFCACCCD_vuextra-cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra),(CFCACCCD_vuextra+cs_d*delta_x(delta_x_index))/(-CBCFCECC_vuextra))
+                        xx(1)=dmin1((CFCACCCD(i,j)-cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))                    
+                        xx(6)=dmax1((CFCACCCD(i,j)-cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)),(CFCACCCD(i,j)+cs_d*delta_x(delta_x_index))/(-CBCFCECC(i,j)))
                     
                         if(deltaquartiS_bis.ge.0.0d0)then
                             xx(2)=-(CACBCDCE(i,j))-sqrt(deltaquartiS_bis)                    
@@ -440,4 +442,4 @@ module kernel_MakeVuBlocco
 			curva_piu_meno_gpu=CBCCCECF(i,j)*x_linea+CACCCFCD(i,j)+sign(1,segno)*sqrt(dabs(-(CBCFCECC(i,j)*x_linea)**2+2*CBCFCECC(i,j)*(-CFCACCCD(i,j))*x_linea-(CFCACCCD(i,j))**2+vel**2*delta_x**2))
 		end select
 	END FUNCTION curva_piu_meno_gpu
-end module kernel_MakeVuBlocco
+end module kernel
