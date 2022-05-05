@@ -9,40 +9,42 @@ module kernel
 
     attributes(global) subroutine Make_Vu_Blocco_DP(hk)
         integer, intent(in) :: hk        
-        integer :: i,j, indice_i, indice_j, ii, jj, iplog, iqlog, ki, kj, l_m, l_m_tilde, val, delta_x_index, index, end
-        double precision, shared :: p2a(blockDim%x+1, blockDim%y), VuExtra(4), CBCDCECAShared, CFCACCCDShared, CBCFCECCShared, CBCCCECFShared, &
+        integer :: ii, jj, iplog, iqlog, ki, kj, val, delta_x_index, index, i,j, indice_i, indice_j
+        double precision, shared :: p2a(blockDim%x+1, blockDim%y), VuExtra(4), delta_x(4), CBCDCECAShared, CFCACCCDShared, CBCFCECCShared, CBCCCECFShared, &
                                     CACCCFCDShared, CACBCDCEShared, CAShared, CDShared, CBShared, CEShared, CCShared, CFShared, estremo_m_tildeShared, estremo_mShared
-        integer, shared :: flag_extraShared
-        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, deltaquartis_bbis, deltaquartip_bbis, delta_x(4), &
-                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, ds, serv, r2_1, r(2) 
-
+        integer, shared :: flag_extraShared, l_m, l_m_tilde
+        double precision :: deltaquartiS, deltaquartiP, deltaquartiS_bis, deltaquartiP_bis, deltaquartis_bbis, deltaquartip_bbis, &
+                            xx(6), app, alfa , beta, xtrasl, A1, B1, alfa_j1, beta_j1, xinttrasl, s, ds, serv, r2_1, r(2)        
+        
+        ki = threadIdx%x
+        kj = threadIdx%y
         
         i=blockIdx%x
         j=blockIdx%y
         indice_i = 1
         indice_j = 1
-        ki = threadIdx%x
-        kj = threadIdx%y
-        VuExtra(:)=0.0d0
-        if(i .gt. DimVu_d) then
-            i = i-DimVu_d
+        
+        if(i .gt. DimVu_d) then                
+            i = i-DimVu_d                
             indice_i = 2
         endif
-
+    
         if(j .gt. DimVu_d) then
             j = j-DimVu_d
             indice_j = 2
         endif
-        
-        l_m = 1
-        l_m_tilde = 1
-        
-        delta_x(1) = hk*delta_t_d
-        delta_x(2) = (hk*delta_t_d)-delta_t_d
-        delta_x(3) = (hk+1)*delta_t_d
-        delta_x(4) = ((hk+1)*delta_t_d)-delta_t_d
 
         if(ki.eq.1 .and. kj.eq.1) then
+
+            VuExtra(:)=0.0d0
+            l_m = 1
+            l_m_tilde = 1
+
+            delta_x(1) = hk*delta_t_d
+            delta_x(2) = (hk*delta_t_d)-delta_t_d
+            delta_x(3) = (hk+1)*delta_t_d
+            delta_x(4) = ((hk+1)*delta_t_d)-delta_t_d
+
             CBCDCECAShared = CBCDCECA(i,j)
             CFCACCCDShared = CFCACCCD(i,j)
             CBCFCECCShared = CBCFCECC(i,j)
@@ -235,18 +237,14 @@ module kernel
                                 call syncthreads()
                                 if(kj .eq. 1) then
                                         
-                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)                                
-                                    call syncwarp(activemask())
-                                    if(ki .le. 16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)                                
-                                    call syncwarp(activemask())
+                                    app = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)                                    
+                                    app = app + __shfl_down(app, 16)
+                                    app = app + __shfl_down(app, 8)
+                                    app = app + __shfl_down(app, 4)
+                                    app = app + __shfl_down(app, 2)
+                                    app = app + __shfl_down(app, 1)
                                     if(ki .eq. 1) then
-                                        VuExtra(delta_x_index) = VuExtra(delta_x_index)+(p2a(ki,kj)+p2a(ki+1,kj))*alfa                                
+                                        VuExtra(delta_x_index) = VuExtra(delta_x_index)+(app)*alfa                                
                                         !if(blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, "ES", Vuextra(delta_x_index), delta_x_index!,activemask()                                 
                                     endif
                                 endif                            
@@ -409,31 +407,15 @@ module kernel
                                 call syncthreads()
                                 if(kj .eq. 1) then
                                     
-                                    p2a(ki,kj) = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)
-                                    !if(delta_x_index .eq. 1) print *, p2a(ki,kj),ki
-                                    !if(ki.eq.1) print *, ()
-                                    call syncwarp(activemask())
+                                    app = (p2a(ki,kj)+p2a(ki,kj+1))*alfa_j1*w_d(ki)*fiU_gpu(l_m_tilde,xtrasl,estremo_m_tildeShared,grado_q_d)                                    
+                                    app = app + __shfl_down(app, 16)
+                                    app = app + __shfl_down(app, 8)
+                                    app = app + __shfl_down(app, 4)
+                                    app = app + __shfl_down(app, 2)
+                                    app = app + __shfl_down(app, 1)
                                     
-                                    if(ki .le. 16) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+16,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 8) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+8,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 4) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+4,kj)
-                                    call syncwarp(activemask())
-                                    if(ki .le. 2) p2a(ki,kj) = p2a(ki,kj)+p2a(ki+2,kj)
-                                    
-                                    call syncwarp(activemask())
-                                    !if(ki .eq. 1) print *, p2a(ki,kj)+p2a(ki+1,kj)*alfa, blockIdx%x, blockIdx%y
-                                    if(ki .eq. 1) then
-                                        ! if (VuExtra(delta_x_index) .eq. 0.0d0) then
-                                        !     if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *,"a"
-                                        !     VuExtra(delta_x_index) = (p2a(ki,kj)+p2a(ki+1,kj))*alfa
-                                        ! else 
-                                        !     if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *,VuExtra(delta_x_index)
-                                            VuExtra(delta_x_index) = VuExtra(delta_x_index)+(p2a(ki,kj)+p2a(ki+1,kj))*alfa
-                                        !     if(blockIdx%x .eq. 16 .and. blockIdx%y .eq.440) print *,"b"
-                                        ! endif
-                                        !if(blockIdx%x .eq. 2 .and. blockIdx%y .eq.320) print *, "EP", (p2a(ki,kj)+p2a(ki+1,kj))*alfa, delta_x_index!, activemask()                                    
+                                    if(ki .eq. 1) then                                        
+                                        VuExtra(delta_x_index) = VuExtra(delta_x_index)+app*alfa                                        
                                     endif
                                 endif
                                 call syncthreads() 
